@@ -1,1 +1,1 @@
-# WolfOfBinance
+# Wolf Of Binance
