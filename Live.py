@@ -5,89 +5,6 @@ import datetime
 from ccxtbt import CCXTStore
 from config import BINANCE, ENV, PRODUCTION, COIN_TARGET, COIN_REFER, DEBUG
 
-class MyStratV6(bt.Strategy):
-    def __init__(self, dir_ema_period, dir_ago, bull_ema_period, bullavgselldiffactor, bullavgbuydiffactor, bear_ema_period, bearavgselldiffactor, bearavgbuydiffactor, stop_loss, loss_treshold):
-        ## SMA ##
-        self.bull_ema_period = bull_ema_period
-        self.bear_ema_period = bear_ema_period
-        self.dir_ema_period = dir_ema_period
-        self.bull_ema = bt.ind.EMA(period=self.bull_ema_period)
-        self.bear_ema = bt.ind.EMA(period=self.bear_ema_period)
-        self.dir_ema =  bt.ind.DoubleExponentialMovingAverage(period=self.dir_ema_period)
-        self.loss_treshold = loss_treshold
-        self.buyprice = -1
-        self.stop_loss = stop_loss
-        self.bullavgbuydiffactor = bullavgbuydiffactor
-        self.bullavgselldiffactor = bullavgselldiffactor
-        self.bearavgbuydiffactor = bearavgbuydiffactor
-        self.bearavgselldiffactor = bearavgselldiffactor
-        self.dir_ago = dir_ago
-        self.isBull = True
-
-
-    def notify_data(self, data, status, *args, **kwargs):
-        dn = data._name
-        dt = datetime.datetime.now()
-        msg= 'Data Status: {}'.format(data._getstatusname(status))
-        print(dt,dn,msg)
-        if data._getstatusname(status) == 'LIVE':
-            self.live_data = True
-        else:
-            self.live_data = False
-
-    def orderer(self, isbuy):
-        if(isbuy):
-            self.buyprice = self.data.close[0]
-            cash,value = self.broker.get_wallet_balance(COIN_REFER)
-            size = cash / self.data.close[0]
-            print("Buyed pos at:"+str(self.data.close[0]))
-            if(self.live_data):
-                self.buy(size=size)
-        else:
-            self.buyprice = -1
-            print("Closed pos at:"+str(self.data.close[0]))
-            if(self.live_data):
-                self. close()
-
-    def next(self):
-        if self.live_data:
-            cash,value = self.broker.get_wallet_balance(COIN_REFER)
-        else:
-            cash = 'NA'
-
-        for data in self.datas:
-            print('{} - {} | Cash {} | O: {} H: {} L: {} C: {} V:{} EMA:{}'.format(data.datetime.datetime()+datetime.timedelta(minutes=180),
-                data._name, cash, data.open[0], data.high[0], data.low[0], data.close[0], data.volume[0],
-                self.dir_ema[0]))
-
-
-
-
-        bull_avgdiff = self.data - self.bull_ema
-        bear_avgdiff = self.data - self.bear_ema
-        tmp = (self.dir_ema - self.dir_ema[-self.dir_ago*2] > 0 and self.dir_ema -
-               self.dir_ema[-self.dir_ago] > 0 and self.dir_ema - self.dir_ema[-5] > 0)
-        if self.isBull != tmp:
-           print("isBull Switched to : "+str(not self.isBull) +":"+str(self.data.close[0]))
-
-        self.isBull = tmp
-
-        if(self.isBull):
-            if bull_avgdiff < -self.bull_ema*10/self.bullavgbuydiffactor and not self.position:
-                self.orderer(True)
-
-            if bull_avgdiff > self.bull_ema*10/self.bullavgselldiffactor and self.position and self.data.close[0] > self.buyprice - (self.buyprice * self.loss_treshold/1000):
-                self.orderer(False)
-        else:
-            if bear_avgdiff < -self.bear_ema*10/self.bearavgbuydiffactor and not self.position:
-                self.orderer(True)
-
-            if bear_avgdiff > self.bear_ema*10/self.bearavgselldiffactor and self.position and self.data.close[0] > self.buyprice - (self.buyprice * self.loss_treshold/1000):
-                self.orderer(False)
-
-        if self.data.close[0] < self.buyprice - (self.buyprice * self.stop_loss/1000):
-            self.orderer(False)
-
 
 class MyStratV7(bt.Strategy):
     def __init__(self, dir_ema_period, dir_ago, ema_period, bullavgselldiffactor, bullavgbuydiffactor, bearavgselldiffactor, bearavgbuydiffactor, stop_loss, loss_treshold):
@@ -123,16 +40,16 @@ class MyStratV7(bt.Strategy):
         if(isbuy):
             self.buyprice = self.data.close[0]
             cash,value = self.broker.get_wallet_balance(COIN_REFER)
-            size = cash / self.data.close[0]
-            print("Buyed pos at:"+str(self.data.close[0]))
-            if(self.live_data and cash > 10.0):
+            size = int(cash-1) / self.data.close[0]
+            if(self.live_data and cash > 11.0):
+                print("Buyed pos at:"+str(self.data.close[0]))
                 self.order=self.buy(size=size)
         else:
             self.buyprice = -1
             coin,val = self.broker.get_wallet_balance(COIN_TARGET)
-            print("Closed pos at:"+str(self.data.close[0]))
             if(self.live_data and (coin * self.data.close[0]) > 10.0):
-                self.order=self.close()
+                print("Closed pos at:"+str(self.data.close[0]))
+                self.order=self.sell(size = coin)
 
     def next(self):
         if self.live_data:
@@ -144,6 +61,8 @@ class MyStratV7(bt.Strategy):
             print('{} - {} | Cash {} | O: {} H: {} L: {} C: {} V:{} EMA:{}'.format(data.datetime.datetime()+datetime.timedelta(minutes=180),
                 data._name, cash, data.open[0], data.high[0], data.low[0], data.close[0], data.volume[0],
                 self.ema[0]))
+
+        #print("pos:"+str(self.position.size))
 
 
         avgdiff = self.data - self.ema
@@ -206,13 +125,13 @@ def main():
         broker = store.getbroker(broker_mapping=broker_mapping)
         cerebro.setbroker(broker)
 
-        hist_start_date = datetime.datetime.utcnow() - datetime.timedelta(minutes=700)
+        hist_start_date = datetime.datetime.utcnow() - datetime.timedelta(minutes=1000)
         data = store.getdata( dataname='%s/%s' % (COIN_TARGET, COIN_REFER),
             name='%s%s' % (COIN_TARGET, COIN_REFER),
             timeframe=bt.TimeFrame.Minutes,
             fromdate=hist_start_date,
             compression=1,
-            ohlcv_limit=700,
+            ohlcv_limit=1000,
             drop_newest=True
         )
 
@@ -235,8 +154,8 @@ def main():
     cerebro.addanalyzer(bt.analyzers.SQN, _name="sqn")
 
     # Include Strategy
-    cerebro.addstrategy(MyStratV7,603, 27, 141, 151, 636, 518, 133, 78, 25) 
-    #cerebro.addstrategy(MyStratV6,1064, 38, 142, 168, 680, 141, 500, 123, 78, 25)
+    cerebro.addstrategy(MyStratV7,603, 27, 141, 151, 636, 518, 133, 78, 25) #603, 27, 141, 151, 636, 518, 133, 78, 25 680, 27, 141, 172, 636, 518, 132, 78, 11
+    #[687, 27, 141, 122, 636, 518, 117, 78, 9]
 
     # Starting backtrader bot
     initial_value = cerebro.broker.getvalue()

@@ -730,7 +730,7 @@ def Optimizer(strat, args):
 # val_list.append(rundata(AVGDiff,0,0,0,199,1000,110,37,170,14,False,False))
 
 
-fromdate = datetime.datetime.strptime('2021-05-01', '%Y-%m-%d')
+fromdate = datetime.datetime.strptime('2021-01-01', '%Y-%m-%d')
 todate = datetime.datetime.strptime('2021-05-30', '%Y-%m-%d')
 data = bt.feeds.GenericCSVData(dataname='data.csv', dtformat=2,timeframe=bt.TimeFrame.Minutes, fromdate=fromdate, todate=todate)
 
@@ -798,16 +798,16 @@ print("MyStratV6:")
 # 7 [1061, 38, 142, 16, 69, 141, 50, 13, 77, 25]
 
 
-#val_list.append(rundata(MyStratV6,[1064, 38, 142, 168, 680, 141, 500, 123, 78, 25],True,False))
-#val_list.append(rundata(MyStratV6,[905,  38, 162, 160, 672, 146, 498, 130, 148, 27],True,False))
+#val_list.append(rundata(MyStratV6,[1064, 38, 142, 168, 680, 141, 500, 123, 78, 25],False,True))
+#val_list.append(rundata(MyStratV6,[905,  38, 162, 160, 672, 146, 498, 130, 148, 27],False,True))
 
 
 print("MyStratV7:")
-#val_list.append(rundata(MyStratV7,Optimizer(MyStratV7,Optimizer(MyStratV7,[603, 27, 141, 151, 636, 518, 133, 78, 25])),True,True)) #[603, 27, 141, 151, 636, 518, 133, 78, 25]
+val_list.append(rundata(MyStratV7,Optimizer(MyStratV7,Optimizer(MyStratV7,[603, 27, 141, 151, 636, 518, 133, 78, 25])),True,True)) #[603, 27, 141, 151, 636, 518, 133, 78, 25]
 
-val_list.append(rundata(MyStratV7,[603, 27, 141, 151, 636, 518, 133, 78, 25],True,False)) 
-#val_list.append(rundata(MyStratV7,[1064, 38, 142, 168, 680, 500, 123, 78, 25],True,False))
-#val_list.append(rundata(MyStratV7,[680, 27, 141, 172, 636, 518, 132, 78, 11],True,False)) 
+val_list.append(rundata(MyStratV7,[603, 27, 141, 151, 636, 518, 133, 78, 25],False,True)) 
+#val_list.append(rundata(MyStratV7,[1064, 38, 142, 168, 680, 500, 123, 78, 25],False,True))
+#val_list.append(rundata(MyStratV7,[680, 27, 141, 172, 636, 518, 132, 78, 11],False,True)) 
 
 # new 6 [905, 38, 162, 160, 672, 146, 498, 130, 148, 27]
 # new 7 [680, 27, 141, 172, 636, 518, 132, 78, 11]

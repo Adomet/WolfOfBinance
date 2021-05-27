@@ -13,7 +13,7 @@ client = Client(BINANCE.get("key"),BINANCE.get("secret"))
 csvfile = open('data.csv', 'w', newline='') 
 candlestick_writer = csv.writer(csvfile, delimiter=',')
 
-candlesticks = client.get_historical_klines(COIN_TARGET + COIN_REFER, Client.KLINE_INTERVAL_1MINUTE, "01 March, 2021", "30 May, 2021")
+candlesticks = client.get_historical_klines(COIN_TARGET + COIN_REFER, Client.KLINE_INTERVAL_1MINUTE, "01 January, 2021", "30 May, 2021")
 
 for candlestick in  candlesticks:
     candlestick[0] = candlestick[0] / 1000
