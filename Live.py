@@ -1,9 +1,26 @@
+from gtts import gTTS
+import os
+import playsound
+
 import time
 import backtrader as bt
 import datetime
 
 from ccxtbt import CCXTStore
 from config import BINANCE, ENV, PRODUCTION, COIN_TARGET, COIN_REFER, DEBUG
+
+
+Buytest    = "Buy " + COIN_TARGET
+Selltext   = "Sell "+ COIN_TARGET
+
+
+def speak(text):
+    language = 'en'
+    filename ="output.mp3"
+    output = gTTS(text=text, lang = language,slow=True)
+    output.save(filename)
+    playsound.playsound(filename)
+    os.remove(filename)
 
 
 class MyStratV7(bt.Strategy):
@@ -41,13 +58,17 @@ class MyStratV7(bt.Strategy):
             self.buyprice = self.data.close[0]
             cash,value = self.broker.get_wallet_balance(COIN_REFER)
             size = int(cash-1) / self.data.close[0]
-            if(self.live_data and cash > 11.0):
+            print("Buy state")
+            if(self.live_data and not self.position and cash > 11.0):
+                speak(Buytest)
                 print("Buyed pos at:"+str(self.data.close[0]))
                 self.order=self.buy(size=size)
         else:
             self.buyprice = -1
             coin,val = self.broker.get_wallet_balance(COIN_TARGET)
-            if(self.live_data and (coin * self.data.close[0]) > 10.0):
+            print("Sell state")
+            if(self.live_data and self.position and (coin * self.data.close[0]) > 10.0):
+                speak(Selltext)
                 print("Closed pos at:"+str(self.data.close[0]))
                 self.order=self.sell(size = coin)
 
@@ -64,26 +85,28 @@ class MyStratV7(bt.Strategy):
 
         #print("pos:"+str(self.position.size))
 
-
         avgdiff = self.data - self.ema
         tmp = (self.ema > self.dir_ema)
 
         if self.isBull != tmp:
-           print("isBull Switched to : "+str(not self.isBull) +":"+str(self.data.close[0]))
+            msg = "Switched: "+(" Bull" if tmp else " Bear")+" at: "+str(self.data.close[0])
+            speak(msg)
+            print(msg)
+
 
         self.isBull = tmp
 
         if(self.isBull):
-            if avgdiff < -self.ema*10/self.bullavgbuydiffactor and not self.position:
+            if avgdiff < -self.ema*10/self.bullavgbuydiffactor:
                 self.orderer(True)
 
-            if avgdiff > self.ema*10/self.bullavgselldiffactor and self.position and self.data.close[0] > self.buyprice - (self.buyprice * self.loss_treshold/1000):
+            if avgdiff > self.ema*10/self.bullavgselldiffactor and self.data.close[0] > self.buyprice - (self.buyprice * self.loss_treshold/1000):
                 self.orderer(False)
         else:
-            if avgdiff < -self.ema*10/self.bearavgbuydiffactor and not self.position:
+            if avgdiff < -self.ema*10/self.bearavgbuydiffactor:
                 self.orderer(True)
 
-            if avgdiff > self.ema*10/self.bearavgselldiffactor and self.position and self.data.close[0] > self.buyprice - (self.buyprice * self.loss_treshold/1000):
+            if avgdiff > self.ema*10/self.bearavgselldiffactor and self.data.close[0] > self.buyprice - (self.buyprice * self.loss_treshold/1000):
                 self.orderer(False)
 
         if self.data.close[0] < self.buyprice - (self.buyprice * self.stop_loss/1000):
@@ -155,7 +178,7 @@ def main():
 
     # Include Strategy
     cerebro.addstrategy(MyStratV7,603, 27, 141, 151, 636, 518, 133, 78, 25) #603, 27, 141, 151, 636, 518, 133, 78, 25 680, 27, 141, 172, 636, 518, 132, 78, 11
-    #[687, 27, 141, 122, 636, 518, 117, 78, 9]
+    #[687, 27, 141, 122, 636, 518, 117, 78, 9] 
 
     # Starting backtrader bot
     initial_value = cerebro.broker.getvalue()
