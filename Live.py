@@ -1,18 +1,11 @@
 from gtts import gTTS
-import os
-import playsound
-
-import time
-import backtrader as bt
-import datetime
-
 from ccxtbt import CCXTStore
 from config import BINANCE, ENV, PRODUCTION, COIN_TARGET, COIN_REFER, DEBUG
+import os, playsound, time, backtrader as bt, datetime
 
-
+### Text To Speach Stuff ###
 Buytest    = "Buy " + COIN_TARGET
 Selltext   = "Sell "+ COIN_TARGET
-
 
 def speak(text):
     language = 'en'
@@ -22,7 +15,7 @@ def speak(text):
     playsound.playsound(filename)
     os.remove(filename)
 
-
+### Trade Strategy ###
 class MyStratV7(bt.Strategy):
     def __init__(self, dir_ema_period, dir_ago, ema_period, bullavgselldiffactor, bullavgbuydiffactor, bearavgselldiffactor, bearavgbuydiffactor, stop_loss, loss_treshold):
         ## SMA ##
@@ -177,8 +170,7 @@ def main():
     cerebro.addanalyzer(bt.analyzers.SQN, _name="sqn")
 
     # Include Strategy
-    cerebro.addstrategy(MyStratV7,603, 27, 141, 151, 636, 518, 133, 78, 25) #603, 27, 141, 151, 636, 518, 133, 78, 25 680, 27, 141, 172, 636, 518, 132, 78, 11
-    #[687, 27, 141, 122, 636, 518, 117, 78, 9] 
+    cerebro.addstrategy(MyStratV7,680, 27, 141, 151, 636, 518, 133, 78, 25) #603, 27, 141, 151, 636, 518, 133, 78, 25 ## Second Setting
 
     # Starting backtrader bot
     initial_value = cerebro.broker.getvalue()
@@ -198,8 +190,8 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("finished.")
-        time = datetime.datetime.now().strftime("%d-%m-%y %H:%M")
+        timer = datetime.datetime.now().strftime("%d-%m-%y %H:%M")
+        print("finished : "+ str(timer))
     except Exception as err:
         print("Finished with error: ", err)
         raise

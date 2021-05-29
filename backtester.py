@@ -1,18 +1,12 @@
-import backtrader as bt
-import datetime
-from operator import itemgetter
-
-NAN = float('NaN')
-
-
-def is_nan(x):
-    return (x != x)
-
+from operator import itemgetter, truth
+from backtrader.trade import Trade
+import get_data as gd, backtrader as bt, datetime
 
 trans = 0
 total_fee = 0
 
 
+### Trade Strategies ###
 class SmaCross(bt.Strategy):
     # list of parameters which are configurable for the strategy
     params = dict(
@@ -530,10 +524,80 @@ class MyStratV7(bt.Strategy):
 
         if self.data.close[0] < self.buyprice - (self.buyprice * self.stop_loss/1000):
             self.order(False)
+        
+class MyStratV8(bt.Strategy):
+    def __init__(self, dir_ema_period, dir_ago, ema_period, bullavgselldiffactor, bullavgbuydiffactor, bearavgselldiffactor, bearavgbuydiffactor, stop_loss, loss_treshold):
+        ## SMA ##
+        self.dir_ema_period = dir_ema_period
+        self.dir_ago = dir_ago
+        self.ema_period = ema_period
+        self.bullavgselldiffactor = bullavgselldiffactor
+        self.bullavgbuydiffactor = bullavgbuydiffactor
+        self.bearavgselldiffactor = bearavgselldiffactor
+        self.bearavgbuydiffactor = bearavgbuydiffactor
+        self.stop_loss = stop_loss
+        self.loss_treshold = loss_treshold
+        self.ema = bt.ind.EMA(period=self.ema_period)
+        self.dir_ema =  bt.ind.EMA(period=self.dir_ema_period)
+        self.buyprice = -1
+        self.isBull = True
 
+
+
+    def UpdateParams(self):
+        paramsList = Optimizer(MyStratV8,self.dir_ema_period, self.dir_ago, self.ema_period, self.bullavgselldiffactor, self.bullavgbuydiffactor, self.bearavgselldiffactor, self.bearavgbuydiffactor, self.stop_loss, self.loss_treshold)
+        self.dir_ema_period = paramsList[0]
+        self.dir_ago = paramsList[1]
+        self.ema_period = paramsList[2]
+        self.bullavgselldiffactor = paramsList[3]
+        self.bullavgbuydiffactor = paramsList[4]
+        self.bearavgselldiffactor = paramsList[5]
+        self.bearavgbuydiffactor = paramsList[6]
+        self.stop_loss = paramsList[7]
+        self.loss_treshold = paramsList[8]
+
+    def order(self, isbuy):
+        global trans
+        global total_fee
+        trans = trans + 1
+        total_fee = total_fee + (self.broker.getvalue()/1000)
+        if(isbuy):
+            self.buyprice = self.data.close[0]
+            size = self.broker.get_cash() / self.data
+            self.buy(size=size)
+        else:
+            self.buyprice = -1
+            self.close()
+
+    def next(self):
+        avgdiff = self.data - self.ema
+        tmp = (self.ema > self.dir_ema)
+
+        #if self.isBull != tmp:
+        #   print("isBull Switched to : "+str(not self.isBull) +":"+str(self.data.close[0]))
+
+        self.isBull = tmp
+
+        if(self.isBull):
+            if avgdiff < -self.ema*10/self.bullavgbuydiffactor and not self.position:
+                self.order(True)
+
+            if avgdiff > self.ema*10/self.bullavgselldiffactor and self.position and self.data.close[0] > self.buyprice - (self.buyprice * self.loss_treshold/1000):
+                self.order(False)
+        else:
+            if avgdiff < -self.ema*10/self.bearavgbuydiffactor and not self.position:
+                self.order(True)
+
+            if avgdiff > self.ema*10/self.bearavgselldiffactor and self.position and self.data.close[0] > self.buyprice - (self.buyprice * self.loss_treshold/1000):
+                self.order(False)
+
+        if self.data.close[0] < self.buyprice - (self.buyprice * self.stop_loss/1000):
+            self.order(False)
+
+### value list to compare different strats ###
 val_list = list()
 
-# i,j,x,y,s,e,a,stl,l
+### Runs Data at a strategy and its parameters can plot or give info about result returns end value of trades ###
 def rundata(strategy, args, plot, info):
     global trans
     global total_fee
@@ -563,6 +627,8 @@ def rundata(strategy, args, plot, info):
     elif(strategy == MyStratV6):
         cerebro.addstrategy(strategy, args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9])
     elif(strategy == MyStratV7):
+        cerebro.addstrategy(strategy, args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8])
+    elif(strategy == MyStratV8):
         cerebro.addstrategy(strategy, args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8])
 
     cerebro.run()
@@ -594,7 +660,7 @@ def rundata(strategy, args, plot, info):
 
     return val
 
-
+### Strategy optimizer takes strat and default values list returns optimized values list for a time period ### 
 def Optimizer(strat, args):
     op_val_list = []
     op_args_list = []
@@ -640,176 +706,30 @@ def Optimizer(strat, args):
     print(op_args_list)
     return op_args_list
 
-
-# 130:400:1:15:17630.459664127367
-# print("RSI:")
-# rundata(RSIStrategy,14,26,68,3,0,False) # RSI BEST
-#print("RSI Size:")
-# rundata(RSIStrategy,14,26,69,3,0,False)
-# print("SmaCrossSize:")
-# rundata(SmaCrossSize,111,375,3,15,0,False)
-# rundata(SmaCross,30,220,0,3,0,False)
-# rundata(SmaCross,30,90,0,14,0,False)
-# val_list.append(rundata(MyStrat,14,27,68,131,1080,123,-5,True))
-# val_list.append(rundata(MyStrat,14,27,68,131,1080,123,-5,False))
-# val_list.append(rundata(MyStrat,13,27,65,57,1077,185,-5,True)) 5m down trend best
-# val_list.append(rundata(MyStrat,13,26,67,462,1080,245,-1,False,False)) #5m up trend best
-# val_list.append(rundata(MACDStrategy,13,24,9,12,3,44,12,True,False))  # MACD best
-# val_list.append(rundata(MyStratV2,13,29,69,650,1100,110,-25,True,False)) #5m down trend best
-# val_list.append(rundata(MyStratV1,13,29,69,600,1100,110,-25,True,False)) #5m down trend best
-# val_list.append(rundata(MyStratV3,14,29,69,260,1000,100,100,-30,True,False)) #5m down trend best
-# val_list.append(rundata(AVGDiff,14,29,69,195,1000,110,40,170,25,False,False))
-# val_list.append(rundata(MyStratV5,300,1500,37,110,0,0,0,25,14,True,False))
+### Choose Time period of Backtest ###
+#fromdate = datetime.datetime.strptime('2021-05-01', '%Y-%m-%d')
+#todate = datetime.datetime.strptime('2021-05-30', '%Y-%m-%d')
+today = datetime.date.today()
+first = today.replace(day=1)
+fromdate = first - datetime.timedelta(days=1)
+todate = today
+### Get Data ###
+gd.get_Date_Data(fromdate,todate)
+path = str(fromdate)+"="+str(todate)+".csv"
+### Load Data ###
+data = bt.feeds.GenericCSVData(dataname=path, dtformat=2,timeframe=bt.TimeFrame.Minutes, fromdate=fromdate, todate=todate)
+print("BackTesting Data of: "+ str(fromdate)+" --->> "+str(todate))
 
 
-# print("SmaCross")
-# rundata(SmaCross,111,375,0,0,0,120,3,False) #SMA BEST
-# for i in range(115,130,1):
-# rundata(MyStrat,14,26,68,111,375,120,-5,False)
-# val_list.append(rundata(MyStratV3,14,29,68,190,1000,110,70,-20,True,False)) #5m down trend best
-
-#print("Last 15D bests")
-# print("RSI:")
-# val_list.append(rundata(RSIStrategy,14,30,70,0,0,0,0,110,-30,False,False))
-# val_list.append(rundata(RSIStrategy,14,30,70,0,0,0,0,500,-10,False,False))
-# print("SMA:")
-# val_list.append(rundata(SmaCross,190,600,0,0,0,0,0,5,0,False,False))
-# val_list.append(rundata(SmaCross,80,380,0,0,0,0,0,14,0,False,False))
-# print("Macd:")
-# val_list.append(rundata(MACDStrategy,20,130,45,30,10,0,0,140,10,False,False))
-# val_list.append(rundata(MACDStrategy,60,130,45,30,10,0,0,200,10,False,False))
-# print("AVGDiff:")
-# val_list.append(rundata(AVGDiff,0,0,0,200,1000,110,50,170,25,False,False))
-# val_list.append(rundata(AVGDiff,0,0,0,199,1000,110,37,170,14,False,False))
-# print("MyStratV1:")
-# val_list.append(rundata(MyStratV1,14,30,70,1250,1300,0,0,110,-25,False,False))
-# val_list.append(rundata(MyStratV1,13,29,69,580,1100,0,0,110,-25,False,False))
-# print("MyStratV2:")
-# val_list.append(rundata(MyStratV2,14,30,70,1200,1300,0,0,80,-25,False,False))
-# val_list.append(rundata(MyStratV2,13,29,69,400,1070,0,0,110,-25,False,False))
-# print("MyStratV3:")
-# val_list.append(rundata(MyStratV3,14,30,70,250,1000,80,0,60,-30,False,False))
-# val_list.append(rundata(MyStratV3,14,29,69,260,1000,100,0,100,-30,False,False))
-# print("MyStratV4:")
-# val_list.append(rundata(MyStratV4,25,220000,0,0,0,450,0,120,10,False,False))
-# val_list.append(rundata(MyStratV4,5,220000,0,0,0,325,0,120,10,False,False))
-#
-#print("2 M Bests")
-# print("RSI:")
-# val_list.append(rundata(RSIStrategy,14,30,70,0,0,0,0,500,-10,False,False))
-# print("SMA")
-# val_list.append(rundata(SmaCross,80,380,0,0,0,0,0,14,0,False,False))
-# print("Macd:")
-# val_list.append(rundata(MACDStrategy,60,130,45,30,10,0,0,200,10,False,False))
-# print("AVGDiff:")
-# val_list.append(rundata(AVGDiff,0,0,0,199,1000,110,37,170,14,False,False))
-# print("MyStratV1:")
-# val_list.append(rundata(MyStratV1,13,29,69,580,1100,0,0,110,-25,False,False))
-# print("MyStratV2:")
-# val_list.append(rundata(MyStratV2,13,29,69,400,1070,0,0,110,-25,False,False))
-# print("MyStratV3:")
-# val_list.append(rundata(MyStratV3,14,29,69,260,1000,100,0,100,-30,False,False))
-# print("MyStratV4:")
-# val_list.append(rundata(MyStratV4,5,220000,0,0,0,325,0,120,10,False,False))
-
-
-# [181, 1396, 35, 87, 3, 184143, -1, 77, 17]   [-21, -21, -21, 189, 654, 67, 48, 154, 16] AVG
-
-
-# val_list.append(rundata(MyStratV5,200,1500,37,110,0,0,0,75,14,False,False))
-# val_list.append(rundata(MyStratV5,200,1500,50,110,0,0,0,25,14,False,False))
-# val_list.append(rundata(MyStratV5,200,1500,50,110,0,0,0,75,14,False,False))
-# val_list.append(rundata(MyStratV5,200,1500,50,150,0,0,0,75,25,False,False))
-# val_list.append(rundata(MyStratV5,200,1500,50,150,0,0,0,170,25,False,False))
-# val_list.append(rundata(MyStratV5,200,1500,50,150,0,0,0,170,14,False,False))
-
-
-# val_list.append(rundata(AVGDiff,0,0,0,200,1000,0,50,170,25,False,False))
-# val_list.append(rundata(AVGDiff,0,0,0,200,1500,110,50,75,14,False,False))
-# val_list.append(rundata(AVGDiff,0,0,0,200,1500,110,37,170,14,False,False))
-# val_list.append(rundata(AVGDiff,0,0,0,199,1000,110,37,170,14,False,False))
-
-
-fromdate = datetime.datetime.strptime('2021-01-01', '%Y-%m-%d')
-todate = datetime.datetime.strptime('2021-05-30', '%Y-%m-%d')
-data = bt.feeds.GenericCSVData(dataname='data.csv', dtformat=2,timeframe=bt.TimeFrame.Minutes, fromdate=fromdate, todate=todate)
-
-
-#print("RSI:")
-#val_list.append(rundata(RSIStrategy,[14,30,70,110,-30],False,False))
-#val_list.append(rundata(RSIStrategy,[14,30,70,500,-10],False,False))
-#print("SMA:")
-#val_list.append(rundata(SmaCross,[190,600,5,0],False,False))
-#val_list.append(rundata(SmaCross,[80,380,14,0],False,False))
-#print("Macd:")
-#val_list.append(rundata(MACDStrategy,[20,130,45,30,10,0,0,140,10],False,False))
-#val_list.append(rundata(MACDStrategy,[60,130,45,30,10,0,0,200,10],False,False))
-#print("AVGDiff:")
-#val_list.append(rundata(AVGDiff,[200,1000,50,170,25],False,False))
-#val_list.append(rundata(AVGDiff,[199,1000,37,170,14],False,False))
-#print("MyStratV1:")
-#val_list.append(rundata(MyStratV1,[14,30,70,1250,1300,110,-25],False,False))
-#val_list.append(rundata(MyStratV1,[13,29,69,580,1100,110,-25 ],False,False))
-#print("MyStratV2:")
-#val_list.append(rundata(MyStratV2,[14,30,70,1200,1300,80,-25],False,False))
-#val_list.append(rundata(MyStratV2,[13,29,69,400,1070,110,-25],False,False))
-#print("MyStratV3:")
-#val_list.append(rundata(MyStratV3,[14,30,70,250,1000,80,60, -30],False,False))
-#val_list.append(rundata(MyStratV3,[14,29,69,260,1000,100,100,-30],False,False))
-#print("MyStratV4:")
-#val_list.append(rundata(MyStratV4,[25,220000,450,120,10],False,False))
-#val_list.append(rundata(MyStratV4,[5,220000,325,120,10 ],False,False))
-
-
-
-#print("MyStratV4:")
-#val_list.append(rundata(MyStratV4,Optimizer(MyStratV4,[5,22000,325,0,120,10]),False,False))
-#val_list.append(rundata(MyStratV4,[10, 20018, 338, -10, 102, 1],False,False))
-#
-#print("MyStratV5:")
-#val_list.append(rundata(MyStratV5,Optimizer(MyStratV5,[146, 1434, 13, 48, 24, 138803, -1, 57, -8]),False,False))
-#val_list.append(rundata(MyStratV5,[146, 1290, 13, 38, 24, 124922, -1, 47, -18],False,False))
-# FR [146, 1515, 13, 58, 24, 154226, -1, 67, 2] SR [146, 1434, 13, 48, 24, 138803, -1, 57, -8]+ [116, 1882, 13, 38, 24, 124922, -1, 47, -18]
-
-#rundata(MyStratV5,[146, 1434, 13, 48, 24, 138803, -1, 57, -8],True,True)
-
-
-# (self,pfast,pslow,dir_ago,bullavgselldiffactor,bullavgbuydiffactor,bearavgselldiffactor,bearavgbuydiffactor,stop_loss,loss_treshold):
-# 05 11 05 30
-#print("AVGDiff:")
-#val_list.append(rundata(AVGDiff,Optimizer(AVGDiff,Optimizer(AVGDiff,[149, 67, 13, 99, -16])),False,False)) # To add trend dir trend dir spesific argsdiff low [149, 67, 13, 99, -16]
-# To add trend dir trend dir spesific argsdiff low [149, 67, 13, 99, -16]
-# [155, 49, 92, -12] [151, 52, 13, 105, -10]
-#val_list.append(rundata(AVGDiff, [111, 33, 45, 95, 1], False, False))
-#val_list.append(rundata(AVGDiff, [149, 67, 13, 99, -16], False, False))
-#val_list.append(rundata(AVGDiff, [200, 37, 13, 170, 14], False, False))
-#val_list.append(rundata(AVGDiff, [190, 37, 13, 152, 23], False, False))
-#val_list.append(rundata(AVGDiff, [156, 37, 13, 131, 6], False, False))
-#val_list.append(rundata(AVGDiff, [151, 52, 13, 105, -10], False, False))
-
-print("MyStratV6:")
-#val_list.append(rundata(MyStratV6,Optimizer(MyStratV6,Optimizer(MyStratV6,[1061, 38, 142, 160, 690, 141, 500, 130, 77, 25])),True,True)) #[1000, 100, 122, 29, 60, 494, 67, 13, 94, 10]
-# 1 [1000, 100, 121, 32, 45, 177, 67, 13, 94, -1]
-# 2 [1063, 60, 132, 16, 61, 148, 50, 13, 78, -3] 
-# 3 [2128, 10, 194, 13, 14, 173, 50, 50, 112, 5]
-# 4 [1061, 39, 142, 16, 69, 141, 50, 13, 77, 25]
-# 5 [1059, 38, 142, 16, 69, 141, 50, 13, 77, 25]
-# 6 [1057, 38, 142, 16, 69, 141, 50, 13, 77, 25]
-# 7 [1061, 38, 142, 16, 69, 141, 50, 13, 77, 25]
-
-
-#val_list.append(rundata(MyStratV6,[1064, 38, 142, 168, 680, 141, 500, 123, 78, 25],False,True))
-#val_list.append(rundata(MyStratV6,[905,  38, 162, 160, 672, 146, 498, 130, 148, 27],False,True))
-
-
+### MyStratV7 ###
 print("MyStratV7:")
-val_list.append(rundata(MyStratV7,Optimizer(MyStratV7,Optimizer(MyStratV7,[603, 27, 141, 151, 636, 518, 133, 78, 25])),True,True)) #[603, 27, 141, 151, 636, 518, 133, 78, 25]
+### Optimize MyStratV7 ###
+#val_list.append(rundata(MyStratV7,Optimizer(MyStratV7,Optimizer(MyStratV7,[603, 27, 141, 151, 636, 518, 133, 78, 25])),True,True)) #[603, 27, 141, 151, 636, 518, 133, 78, 25]
 
-val_list.append(rundata(MyStratV7,[603, 27, 141, 151, 636, 518, 133, 78, 25],False,True)) 
-#val_list.append(rundata(MyStratV7,[1064, 38, 142, 168, 680, 500, 123, 78, 25],False,True))
-#val_list.append(rundata(MyStratV7,[680, 27, 141, 172, 636, 518, 132, 78, 11],False,True)) 
+val_list.append(rundata(MyStratV7,[603, 27, 141, 151, 636, 518, 133, 78, 25],False,False)) 
+val_list.append(rundata(MyStratV7,[680, 27, 141, 172, 636, 518, 132, 78, 11],False,False))
+val_list.append(rundata(MyStratV7,[680, 27, 141, 172, 636, 518, 132, 78, 25],False,False)) 
+val_list.append(rundata(MyStratV7,[603, 27, 141, 172, 636, 518, 132, 78, 11],False,False))  
 
-# new 6 [905, 38, 162, 160, 672, 146, 498, 130, 148, 27]
-# new 7 [680, 27, 141, 172, 636, 518, 132, 78, 11]
 print("Best value:"+str(max(val_list)))
 
