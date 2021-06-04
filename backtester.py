@@ -471,7 +471,7 @@ class MyStratV6(bt.Strategy):
             self.order(False)
 
 class MyStratV7(bt.Strategy):
-    def __init__(self, dir_ema_period, dir_ago, ema_period, bullavgselldiffactor, bullavgbuydiffactor, bearavgselldiffactor, bearavgbuydiffactor, stop_loss, loss_treshold):
+    def __init__(self, dir_ema_period, ema_period, bullavgselldiffactor, bullavgbuydiffactor, bearavgselldiffactor, bearavgbuydiffactor, stop_loss, loss_treshold):
         ## SMA ##
         self.ema_period = ema_period
         self.dir_ema_period = dir_ema_period
@@ -484,7 +484,6 @@ class MyStratV7(bt.Strategy):
         self.bullavgselldiffactor = bullavgselldiffactor
         self.bearavgbuydiffactor = bearavgbuydiffactor
         self.bearavgselldiffactor = bearavgselldiffactor
-        self.dir_ago = dir_ago
         self.isBull = True
 
     def order(self, isbuy):
@@ -526,10 +525,9 @@ class MyStratV7(bt.Strategy):
             self.order(False)
         
 class MyStratV8(bt.Strategy):
-    def __init__(self, dir_ema_period, dir_ago, ema_period, bullavgselldiffactor, bullavgbuydiffactor, bearavgselldiffactor, bearavgbuydiffactor, stop_loss, loss_treshold):
+    def __init__(self, dir_ema_period,ema_period, bullavgselldiffactor, bullavgbuydiffactor, bearavgselldiffactor, bearavgbuydiffactor, stop_loss, loss_treshold):
         ## SMA ##
         self.dir_ema_period = dir_ema_period
-        self.dir_ago = dir_ago
         self.ema_period = ema_period
         self.bullavgselldiffactor = bullavgselldiffactor
         self.bullavgbuydiffactor = bullavgbuydiffactor
@@ -542,19 +540,21 @@ class MyStratV8(bt.Strategy):
         self.buyprice = -1
         self.isBull = True
 
-
-
     def UpdateParams(self):
-        paramsList = Optimizer(MyStratV8,self.dir_ema_period, self.dir_ago, self.ema_period, self.bullavgselldiffactor, self.bullavgbuydiffactor, self.bearavgselldiffactor, self.bearavgbuydiffactor, self.stop_loss, self.loss_treshold)
+        print("UpdatingParams...")
+        today = self.datetime.date(ago=0)
+        print("today:"+str(today))
+        fromdate = today - datetime.timedelta(days=14)
+        todate = today
+        paramsList = Optimizer_Date(MyStratV7,[self.dir_ema_period, self.ema_period, self.bullavgselldiffactor, self.bullavgbuydiffactor, self.bearavgselldiffactor, self.bearavgbuydiffactor, self.stop_loss, self.loss_treshold],fromdate,todate)
         self.dir_ema_period = paramsList[0]
-        self.dir_ago = paramsList[1]
-        self.ema_period = paramsList[2]
-        self.bullavgselldiffactor = paramsList[3]
-        self.bullavgbuydiffactor = paramsList[4]
-        self.bearavgselldiffactor = paramsList[5]
-        self.bearavgbuydiffactor = paramsList[6]
-        self.stop_loss = paramsList[7]
-        self.loss_treshold = paramsList[8]
+        self.ema_period = paramsList[1]
+        self.bullavgselldiffactor = paramsList[2]
+        self.bullavgbuydiffactor = paramsList[3]
+        self.bearavgselldiffactor = paramsList[4]
+        self.bearavgbuydiffactor = paramsList[5]
+        self.stop_loss = paramsList[6]
+        self.loss_treshold = paramsList[7]
 
     def order(self, isbuy):
         global trans
@@ -570,6 +570,11 @@ class MyStratV8(bt.Strategy):
             self.close()
 
     def next(self):
+
+        if(str(self.datetime.time()) == "00:01:00"):
+            self.UpdateParams()
+            return
+
         avgdiff = self.data - self.ema
         tmp = (self.ema > self.dir_ema)
 
@@ -627,16 +632,16 @@ def rundata(strategy, args, plot, info):
     elif(strategy == MyStratV6):
         cerebro.addstrategy(strategy, args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9])
     elif(strategy == MyStratV7):
-        cerebro.addstrategy(strategy, args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8])
+        cerebro.addstrategy(strategy, args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7])
     elif(strategy == MyStratV8):
-        cerebro.addstrategy(strategy, args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8])
+        cerebro.addstrategy(strategy, args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7])
 
     cerebro.run()
     val = cerebro.broker.getvalue()-total_fee
 
     restr = ""
     for i in range(0, len(args)):
-        restr += str(args[i]) + ":"
+        restr += str(args[i]) + ","
     print(restr+" trans:"+str(trans)+":::"+str(val))
 
     StartCash = 10000
@@ -646,6 +651,8 @@ def rundata(strategy, args, plot, info):
     BotMarketDiff = Bot_ratio-Market_ratio
 
     if(info):
+        print("Strat: "+strategy.__name__)
+        print("Backtested Data of: "+ str(fromdate)+" ---->> "+str(todate))
         print("In Pos:" + str(cerebro.broker.getposition(data).size != 0))
         print("start value:" + str(StartCash))
         print("final value:" + str(val))
@@ -664,6 +671,8 @@ def rundata(strategy, args, plot, info):
 def Optimizer(strat, args):
     op_val_list = []
     op_args_list = []
+    print("Optimizing...")
+    print(args)
 
     for arg in range(0, len(args)):
         new_arg = args[arg]
@@ -677,7 +686,7 @@ def Optimizer(strat, args):
             op_val_list.append([rundata(strat, args, False, False), new_arg])
 
             step = max(abs(new_arg/100), 1)
-            diff = step * 20
+            diff = step * 90
             heigh = new_arg+diff+step
             low = new_arg-diff-step
             
@@ -706,15 +715,77 @@ def Optimizer(strat, args):
     print(op_args_list)
     return op_args_list
 
+
+def Optimizer_Date(strat, args, fromdate, todate):
+    op_val_list = []
+    op_args_list = []
+    print("Optimizing...")
+    print(args)
+    
+    ### Get Data ###
+    gd.get_Date_Data(fromdate,todate,False)
+    path = str(fromdate)+"="+str(todate)+".csv"
+    ### Load Data ###
+    global data
+    data = bt.feeds.GenericCSVData(dataname=path, dtformat=2,timeframe=bt.TimeFrame.Minutes, fromdate=fromdate, todate=todate)
+    print("BackTesting Data of: "+ str(fromdate)+" --->> "+str(todate))
+
+
+    for arg in range(0, len(args)):
+        new_arg = args[arg]
+        old_arg = args[arg]
+        old_val = -9999999
+        new_val = rundata(strat, args, False, False)
+        while old_val < new_val:
+            old_val = new_val
+            op_val_list = []
+            args[arg] = new_arg
+            op_val_list.append([rundata(strat, args, False, False), new_arg])
+
+            step = max(abs(new_arg/100), 1)
+            diff = step * 50
+            heigh = new_arg+diff+step
+            low = new_arg-diff-step
+            
+            if(old_arg > new_arg):
+                heigh = new_arg+step
+                low = new_arg-diff-diff-step
+            elif(old_arg < new_arg):
+                heigh = new_arg+diff+diff+step
+                low = new_arg-step
+
+            if(args[arg] > 0):
+                low = max(low, 1)
+
+            for i in range(int(low+1), int(heigh+1), int(step+1)):
+                args[arg] = i
+                op_val_list.append([rundata(strat, args, False, False), i])
+            res = max(op_val_list, key=itemgetter(0))
+            print("best:"+str(res[1])+":"+str(res[0]))
+            old_arg = new_arg
+            new_arg = res[1]
+            new_val = res[0]
+
+        op_args_list.append(new_arg)
+        args[arg] = new_arg
+        print("Optimized val:"+str(new_arg))
+    print(op_args_list)
+    return op_args_list
+
+
+
 ### Choose Time period of Backtest ###
-#fromdate = datetime.datetime.strptime('2021-05-01', '%Y-%m-%d')
-#todate = datetime.datetime.strptime('2021-05-30', '%Y-%m-%d')
 today = datetime.date.today()
-first = today.replace(day=1)
-fromdate = first - datetime.timedelta(days=1)
+fromdate = today - datetime.timedelta(days=7)
 todate = today
+
+fromdate = datetime.datetime.strptime('2021-05-30', '%Y-%m-%d')
+todate = datetime.datetime.strptime('2021-06-10', '%Y-%m-%d') #today #datetime.datetime.strptime('2021-05-30', '%Y-%m-%d')
+fromdate = fromdate.date()
+todate = todate.date()
+
 ### Get Data ###
-gd.get_Date_Data(fromdate,todate)
+gd.get_Date_Data(fromdate,todate,False)
 path = str(fromdate)+"="+str(todate)+".csv"
 ### Load Data ###
 data = bt.feeds.GenericCSVData(dataname=path, dtformat=2,timeframe=bt.TimeFrame.Minutes, fromdate=fromdate, todate=todate)
@@ -723,13 +794,13 @@ print("BackTesting Data of: "+ str(fromdate)+" --->> "+str(todate))
 
 ### MyStratV7 ###
 print("MyStratV7:")
-### Optimize MyStratV7 ###
-#val_list.append(rundata(MyStratV7,Optimizer(MyStratV7,Optimizer(MyStratV7,[603, 27, 141, 151, 636, 518, 133, 78, 25])),True,True)) #[603, 27, 141, 151, 636, 518, 133, 78, 25]
+#val_list.append(rundata(MyStratV7,Optimizer(MyStratV7,Optimizer(MyStratV7,[432, 141, 169, 539, 928, 128, 174, 8])),True,True))
+print("Live")
+val_list.append(rundata(MyStratV7,[432, 146, 169, 540, 995, 126, 174, 8],False,False))
 
-val_list.append(rundata(MyStratV7,[603, 27, 141, 151, 636, 518, 133, 78, 25],False,False)) 
-val_list.append(rundata(MyStratV7,[680, 27, 141, 172, 636, 518, 132, 78, 11],False,False))
-val_list.append(rundata(MyStratV7,[680, 27, 141, 172, 636, 518, 132, 78, 25],False,False)) 
-val_list.append(rundata(MyStratV7,[603, 27, 141, 172, 636, 518, 132, 78, 11],False,False))  
+### MyStratV8 ###
+print("MyStratV8:")
+#val_list.append(rundata(MyStratV8,[410,146,169,540,995,126,174,8],False,False))
 
 print("Best value:"+str(max(val_list)))
 

@@ -17,7 +17,7 @@ def speak(text):
 
 ### Trade Strategy ###
 class MyStratV7(bt.Strategy):
-    def __init__(self, dir_ema_period, dir_ago, ema_period, bullavgselldiffactor, bullavgbuydiffactor, bearavgselldiffactor, bearavgbuydiffactor, stop_loss, loss_treshold):
+    def __init__(self, dir_ema_period, ema_period, bullavgselldiffactor, bullavgbuydiffactor, bearavgselldiffactor, bearavgbuydiffactor, stop_loss, loss_treshold):
         ## SMA ##
         self.ema_period = ema_period
         self.dir_ema_period = dir_ema_period
@@ -30,7 +30,6 @@ class MyStratV7(bt.Strategy):
         self.bullavgselldiffactor = bullavgselldiffactor
         self.bearavgbuydiffactor = bearavgbuydiffactor
         self.bearavgselldiffactor = bearavgselldiffactor
-        self.dir_ago = dir_ago
         self.isBull = True
         self.order = None
 
@@ -156,7 +155,7 @@ def main():
 
     else:  # Backtesting with CSV file
         fromdate = datetime.datetime.strptime('2021-05-01', '%Y-%m-%d')
-        todate = datetime.datetime.strptime('2021-05-30', '%Y-%m-%d')
+        todate = datetime.datetime.strptime('2021-06-10', '%Y-%m-%d')
         data = bt.feeds.GenericCSVData(dataname='data.csv', dtformat=2,timeframe=bt.TimeFrame.Minutes, fromdate=fromdate, todate=todate)
         cerebro.adddata(data)
 
@@ -170,8 +169,7 @@ def main():
     cerebro.addanalyzer(bt.analyzers.SQN, _name="sqn")
 
     # Include Strategy
-    cerebro.addstrategy(MyStratV7,680, 27, 141, 151, 636, 518, 133, 78, 25) #603, 27, 141, 151, 636, 518, 133, 78, 25 ## Second Setting
-
+    cerebro.addstrategy(MyStratV7,432, 146, 169, 540, 995, 126, 174, 8)
     # Starting backtrader bot
     initial_value = cerebro.broker.getvalue()
     print('Starting Portfolio Value: %.2f' % initial_value)
