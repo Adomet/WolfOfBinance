@@ -15,8 +15,9 @@ def speak(text):
     playsound.playsound(filename)
     os.remove(filename)
 
+
 ### Trade Strategy ###
-class MyStratV7(bt.Strategy):
+class MyStratV10(bt.Strategy):
     def __init__(self, dir_ema_period, ema_period, bullavgselldiffactor, bullavgbuydiffactor, bearavgselldiffactor, bearavgbuydiffactor, stop_loss, loss_treshold):
         ## SMA ##
         self.ema_period = ema_period
@@ -51,7 +52,7 @@ class MyStratV7(bt.Strategy):
             cash,value = self.broker.get_wallet_balance(COIN_REFER)
             size = int(cash-1) / self.data.close[0]
             print("Buy state")
-            if(self.live_data and not self.position and cash > 11.0):
+            if(self.live_data and cash > 11.0):
                 speak(Buytest)
                 print("Buyed pos at:"+str(self.data.close[0]))
                 self.order=self.buy(size=size)
@@ -59,7 +60,7 @@ class MyStratV7(bt.Strategy):
             self.buyprice = -1
             coin,val = self.broker.get_wallet_balance(COIN_TARGET)
             print("Sell state")
-            if(self.live_data and self.position and (coin * self.data.close[0]) > 10.0):
+            if(self.live_data and (coin * self.data.close[0]) > 10.0):
                 speak(Selltext)
                 print("Closed pos at:"+str(self.data.close[0]))
                 self.order=self.sell(size = coin)
@@ -85,6 +86,9 @@ class MyStratV7(bt.Strategy):
             speak(msg)
             print(msg)
 
+        if(self.isBull and not (tmp==self.isBull) and self.data.close[0] > self.buyprice - (self.buyprice * self.loss_treshold/1000)):
+            self.orderer(False)
+
 
         self.isBull = tmp
 
@@ -108,69 +112,51 @@ class MyStratV7(bt.Strategy):
 def main():
     cerebro = bt.Cerebro(quicknotify=True)
 
-    if ENV == PRODUCTION:  # Live trading with Binance
-        broker_config = {
-            'apiKey': BINANCE.get("key"),
-            'secret': BINANCE.get("secret"),
-            'nonce': lambda: str(int(time.time() * 1000)),
-            'enableRateLimit': True,
-        }
+    broker_config = {
+        'apiKey': BINANCE.get("key"),
+        'secret': BINANCE.get("secret"),
+        'nonce': lambda: str(int(time.time() * 1000)),
+        'enableRateLimit': True,
+    }
 
-        store = CCXTStore(exchange='binance', currency=COIN_REFER, config=broker_config, retries=5, debug=DEBUG)
-
-        broker_mapping = {
-            'order_types': {
-                bt.Order.Market: 'market',
-                bt.Order.Limit: 'limit',
-                bt.Order.Stop: 'stop-loss',
-                bt.Order.StopLimit: 'stop limit'
+    store = CCXTStore(exchange='binance', currency=COIN_REFER, config=broker_config, retries=5, debug=DEBUG)
+    broker_mapping = {
+        'order_types': {
+            bt.Order.Market: 'market',
+            bt.Order.Limit: 'limit',
+            bt.Order.Stop: 'stop-loss',
+            bt.Order.StopLimit: 'stop limit'
+        },
+        'mappings': {
+            'closed_order': {
+                'key': 'status',
+                'value': 'closed'
             },
-            'mappings': {
-                'closed_order': {
-                    'key': 'status',
-                    'value': 'closed'
-                },
-                'canceled_order': {
-                    'key': 'status',
-                    'value': 'canceled'
-                }
+            'canceled_order': {
+                'key': 'status',
+                'value': 'canceled'
             }
         }
+    }
 
-        broker = store.getbroker(broker_mapping=broker_mapping)
-        cerebro.setbroker(broker)
+    broker = store.getbroker(broker_mapping=broker_mapping)
+    cerebro.setbroker(broker)
+    hist_start_date = datetime.datetime.utcnow() - datetime.timedelta(minutes=1000)
+    data = store.getdata( dataname='%s/%s' % (COIN_TARGET, COIN_REFER),
+        name='%s%s' % (COIN_TARGET, COIN_REFER),
+        timeframe=bt.TimeFrame.Minutes,
+        fromdate=hist_start_date,
+        compression=1,
+        ohlcv_limit=100000000,
+        drop_newest=True
+    )
 
-        hist_start_date = datetime.datetime.utcnow() - datetime.timedelta(minutes=1000)
-        data = store.getdata( dataname='%s/%s' % (COIN_TARGET, COIN_REFER),
-            name='%s%s' % (COIN_TARGET, COIN_REFER),
-            timeframe=bt.TimeFrame.Minutes,
-            fromdate=hist_start_date,
-            compression=1,
-            ohlcv_limit=1000,
-            drop_newest=True
-        )
-
-        # Add the feed
-        cerebro.adddata(data)
-
-    else:  # Backtesting with CSV file
-        fromdate = datetime.datetime.strptime('2021-05-01', '%Y-%m-%d')
-        todate = datetime.datetime.strptime('2021-06-10', '%Y-%m-%d')
-        data = bt.feeds.GenericCSVData(dataname='data.csv', dtformat=2,timeframe=bt.TimeFrame.Minutes, fromdate=fromdate, todate=todate)
-        cerebro.adddata(data)
-
-        broker = cerebro.getbroker()
-        broker.setcommission(commission=0.001, name=COIN_TARGET)  # Simulating exchange fee
-        broker.setcash(10000)
-
-    # Analyzers to evaluate trades and strategies
-    # SQN = Average( profit / risk ) / StdDev( profit / risk ) x SquareRoot( number of trades )
-    cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name="ta")
-    cerebro.addanalyzer(bt.analyzers.SQN, _name="sqn")
-
+    # Add the feed
+    cerebro.adddata(data)
+    
     # Include Strategy
-    cerebro.addstrategy(MyStratV7,432, 146, 169, 540, 995, 126, 174, 8)
-    # Starting backtrader bot
+    cerebro.addstrategy(MyStratV10,433, 160, 149, 561, 1506, 185, 68, -15) 
+    # Starting backtrader bot 
     initial_value = cerebro.broker.getvalue()
     print('Starting Portfolio Value: %.2f' % initial_value)
     result = cerebro.run()
