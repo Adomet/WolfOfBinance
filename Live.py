@@ -7,6 +7,13 @@ import os, playsound, time, backtrader as bt, datetime
 Buytest    = "Buy " + COIN_TARGET
 Selltext   = "Sell "+ COIN_TARGET
 
+
+def log(msg):
+    print(msg)
+    with open('logs.txt','a') as f:
+        f.write(msg +'\n')
+
+
 def speak(text):
     return
     language = 'en'
@@ -38,7 +45,7 @@ class MyStratV8(bt.Strategy):
         dn = data._name
         dt = datetime.datetime.now()
         msg= 'Data Status: {}'.format(data._getstatusname(status))
-        print(dt,dn,msg)
+        log(dt+dn+msg)
         if data._getstatusname(status) == 'LIVE':
             self.live_data = True
         else:
@@ -49,18 +56,18 @@ class MyStratV8(bt.Strategy):
             self.buyprice = self.data.close[0]
             cash,value = self.broker.get_wallet_balance(COIN_REFER)
             size = int(cash-1) / self.data.close[0]
-            print("Buy state")
+            log("Buy state")
             if(self.live_data and cash > 11.0):
                 speak(Buytest)
-                print("Buyed pos at:"+str(self.data.close[0]))
+                log("Buyed pos at:"+str(self.data.close[0]))
                 self.order=self.buy(size=size)
         else:
             self.buyprice = -1
             coin,val = self.broker.get_wallet_balance(COIN_TARGET)
-            print("Sell state")
+            log("Sell state")
             if(self.live_data and (coin * self.data.close[0]) > 11.0):
                 speak(Selltext)
-                print("Closed pos at:"+str(self.data.close[0]))
+                log("Closed pos at:"+str(self.data.close[0]))
                 self.order=self.sell(size = coin)
 
     def next(self):
@@ -77,7 +84,7 @@ class MyStratV8(bt.Strategy):
             cash = 'NA'
 
         for data in self.datas:
-            print('{} - {} | Cash {} | O: {} H: {} L: {} C: {} V:{} EMA:{}'.format(data.datetime.datetime()+datetime.timedelta(minutes=180),
+            log('{} - {} | Cash {} | O: {} H: {} L: {} C: {} V:{} EMA:{}'.format(data.datetime.datetime()+datetime.timedelta(minutes=180),
                 data._name, cash, data.open[0], data.high[0], data.low[0], data.close[0], data.volume[0],
                 self.diff_ema[0]))
 
@@ -86,7 +93,7 @@ class MyStratV8(bt.Strategy):
         if self.isBull != tmp:
             msg = "Switched: "+(" Bull" if tmp else " Bear")+" at: "+str(self.data.close[0])
             speak(msg)
-            print(msg)
+            log(msg)
 
 
         if (self.isBull and not isTrendSame and isSellable):
@@ -163,13 +170,13 @@ def main():
     cerebro.addstrategy(MyStratV8,537, 397, 155, 148, 165, 1384, 205, 74, -1) 
     # Starting backtrader bot 
     initial_value = cerebro.broker.getvalue()
-    print('Starting Portfolio Value: %.2f' % initial_value)
+    log('Starting Portfolio Value: %.2f' % initial_value)
     result = cerebro.run()
 
     # Print analyzers - results
     final_value = cerebro.broker.getvalue()
-    print('Final Portfolio Value: %.2f' % final_value)
-    print('Profit %.3f%%' % ((final_value - initial_value) / initial_value * 100))
+    log('Final Portfolio Value: %.2f' % final_value)
+    log('Profit %.3f%%' % ((final_value - initial_value) / initial_value * 100))
 
     if DEBUG:
         cerebro.plot()
@@ -180,9 +187,9 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         timer = datetime.datetime.now().strftime("%d-%m-%y %H:%M")
-        print("finished : "+ str(timer))
+        log("finished : "+ str(timer))
     except Exception as err:
-        print("Finished with error: ", err)
+        log("Finished with error: "+ str(err))
         raise
 
 
