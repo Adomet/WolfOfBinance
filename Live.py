@@ -45,7 +45,7 @@ class MyStratV8(bt.Strategy):
         dn = data._name
         dt = datetime.datetime.now()
         msg= 'Data Status: {}'.format(data._getstatusname(status))
-        log(dt+dn+msg)
+        print(dt,dn,msg)
         if data._getstatusname(status) == 'LIVE':
             self.live_data = True
         else:
