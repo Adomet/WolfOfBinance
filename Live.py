@@ -51,7 +51,7 @@ class MyStratV8(bt.Strategy):
         else:
             self.live_data = False
 
-    def order(self, isbuy):
+    def orderer(self, isbuy):
         if(isbuy):
             self.buyprice = self.data.close[0]
             cash,value = self.broker.get_wallet_balance(COIN_REFER)
@@ -97,28 +97,29 @@ class MyStratV8(bt.Strategy):
 
 
         if (self.isBull and not isTrendSame and isSellable):
-            self.order(False)
+            self.orderer(False)
         
         if (not self.isBull and not isTrendSame):
-            self.order(True)
+            self.orderer(True)
+
 
         self.isBull = tmp
 
         if (self.isBull):
             if avgdiff < -self.diff_ema*10/self.bullavgbuydiffactor:
-                self.order(True)
+                self.orderer(True)
 
             if avgdiff > self.diff_ema*10/self.bullavgselldiffactor and isSellable:
-                self.order(False)
+                self.orderer(False)
         else:
             if avgdiff < -self.diff_ema*10/self.bearavgbuydiffactor:
-                self.order(True)
+                self.orderer(True)
 
             if avgdiff > self.diff_ema*10/self.bearavgselldiffactor and isSellable:
-                self.order(False)
+                self.orderer(False)
 
         if (isStop):
-            self.order(False)
+            self.orderer(False)
 
 
 def main():
@@ -187,10 +188,9 @@ def wob():
         main()
     except KeyboardInterrupt:
         timer = datetime.datetime.now().strftime("%d-%m-%y %H:%M")
-        log("finished : "+ str(timer))
+        print("finished : "+ str(timer))
     except Exception as err:
-        log("Finished with error: "+ str(err))
-        wob()
+        print("Finished with error: ", err)
         raise
 
 if __name__ == "__main__":
