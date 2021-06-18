@@ -182,7 +182,7 @@ def main():
         cerebro.plot()
 
 
-if __name__ == "__main__":
+def wob():
     try:
         main()
     except KeyboardInterrupt:
@@ -190,7 +190,11 @@ if __name__ == "__main__":
         log("finished : "+ str(timer))
     except Exception as err:
         log("Finished with error: "+ str(err))
+        wob()
         raise
+
+if __name__ == "__main__":
+    wob()
 
 
 
