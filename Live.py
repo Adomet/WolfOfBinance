@@ -168,7 +168,7 @@ def main():
     cerebro.adddata(data)
     
     # Include Strategy
-    cerebro.addstrategy(MyStratV8,537, 397, 145, 154, 171, 1124, 205, 44, 1) 
+    cerebro.addstrategy(MyStratV8,537, 397, 148, 154, 171, 1212, 205, 44, 1) 
     # Starting backtrader bot 
     initial_value = cerebro.broker.getvalue()
     log('Starting Portfolio Value: %.2f' % initial_value)
