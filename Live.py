@@ -168,7 +168,7 @@ def main():
     cerebro.adddata(data)
     
     # Include Strategy
-    cerebro.addstrategy(MyStratV8,537, 397, 148, 154, 171, 1212, 205, 44, 1) 
+    cerebro.addstrategy(MyStratV8, 537, 397, 145, 154, 171, 1124, 197, 46, 1) 
     # Starting backtrader bot 
     initial_value = cerebro.broker.getvalue()
     log('Starting Portfolio Value: %.2f' % initial_value)
@@ -188,9 +188,9 @@ def wob():
         main()
     except KeyboardInterrupt:
         timer = datetime.datetime.now().strftime("%d-%m-%y %H:%M")
-        print("finished : "+ str(timer))
+        log("finished : "+ str(timer))
     except Exception as err:
-        print("Finished with error: ", err)
+        log("Finished with error: "+str(err))
         raise
 
 if __name__ == "__main__":

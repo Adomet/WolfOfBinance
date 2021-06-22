@@ -1,7 +1,10 @@
+from math import log
 from operator import itemgetter, truth
+from os import stat
 
-from backtrader import order
+from backtrader import cerebro, order
 import get_data as gd, backtrader as bt, datetime
+import time
 
 trans = 0
 total_fee = 0
@@ -576,19 +579,30 @@ class MyStratV6(bt.Strategy):
             self.order(False)
 
 class MyStratV7(bt.Strategy):
-    def __init__(self, dir_ema_period, ema_period, bullavgselldiffactor, bullavgbuydiffactor, bearavgselldiffactor, bearavgbuydiffactor, stop_loss, loss_treshold):
+    params=(('dir_ema_period'       ,0),
+            ('ema_period'           ,0),
+            ('bullavgselldiffactor' ,0),
+            ('bullavgbuydiffactor'  ,0),
+            ('bearavgselldiffactor' ,0),
+            ('bearavgbuydiffactor'  ,0),
+            ('stop_loss'            ,0),
+            ('loss_treshold'        ,0),
+            ('total_fee'            ,0)
+            )
+    def __init__(self):
         ## SMA ##
-        self.ema_period = ema_period
-        self.dir_ema_period = dir_ema_period
+        print([self.params.dir_ema_period,self.params.ema_period,self.params.bullavgselldiffactor,self.params.bullavgbuydiffactor,self.params.bearavgselldiffactor,self.params.bearavgbuydiffactor,self.params.stop_loss,self.params.loss_treshold])
+        self.ema_period = self.params.ema_period
+        self.dir_ema_period = self.params.dir_ema_period
         self.ema = bt.ind.EMA(period=self.ema_period)
         self.dir_ema =  bt.ind.EMA(period=self.dir_ema_period)
-        self.loss_treshold = loss_treshold
+        self.loss_treshold = self.params.loss_treshold
         self.buyprice = -1
-        self.stop_loss = stop_loss
-        self.bullavgbuydiffactor = bullavgbuydiffactor
-        self.bullavgselldiffactor = bullavgselldiffactor
-        self.bearavgbuydiffactor = bearavgbuydiffactor
-        self.bearavgselldiffactor = bearavgselldiffactor
+        self.stop_loss = self.params.stop_loss
+        self.bullavgbuydiffactor = self.params.bullavgbuydiffactor
+        self.bullavgselldiffactor = self.params.bullavgselldiffactor
+        self.bearavgbuydiffactor = self.params.bearavgbuydiffactor
+        self.bearavgselldiffactor = self.params.bearavgselldiffactor
         self.isBull = True
 
     def order(self, isbuy):
@@ -628,36 +642,47 @@ class MyStratV7(bt.Strategy):
 
         if self.data.close[0] < self.buyprice - (self.buyprice * self.stop_loss/1000):
             self.order(False)
-        
+
 
 class MyStratV8(bt.Strategy):
-    def __init__(self,trend_slow_ema_period,trend_fast_ema_period, diff_ema_period, bullavgselldiffactor, bullavgbuydiffactor, bearavgselldiffactor, bearavgbuydiffactor, stop_loss, loss_treshold):
+    params=(('trend_slow_ema_period',0),
+            ('trend_fast_ema_period',0),
+            ('diff_ema_period'      ,0),
+            ('bullavgselldiffactor' ,0),
+            ('bullavgbuydiffactor'  ,0),
+            ('bearavgselldiffactor' ,0),
+            ('bearavgbuydiffactor'  ,0),
+            ('stop_loss'            ,0),
+            ('loss_treshold'        ,0),
+            ('total_fee'            ,0)
+            )
+    def __init__(self):
         ## SMA ##
-        self.diff_ema             = bt.ind.EMA(period=diff_ema_period)
-        self.trend_slow_ema       =  bt.ind.SMA(period=trend_slow_ema_period)
-        self.trend_fast_ema       =  bt.ind.EMA(period=trend_fast_ema_period)
-        self.loss_treshold        = loss_treshold
+        print([self.params.trend_slow_ema_period,self.params.trend_fast_ema_period,self.params.diff_ema_period,self.params.bullavgselldiffactor,self.params.bullavgbuydiffactor,self.params.bearavgselldiffactor,self.params.bearavgbuydiffactor,self.params.stop_loss,self.params.loss_treshold])
+        self.diff_ema             = bt.ind.EMA(period=self.params.diff_ema_period)
+        self.trend_slow_ema       =  bt.ind.SMA(period=self.params.trend_slow_ema_period)
+        self.trend_fast_ema       =  bt.ind.EMA(period=self.params.trend_fast_ema_period)
+        self.loss_treshold        = self.params.loss_treshold
         self.buyprice             = -1
-        self.stop_loss            = stop_loss
-        self.bullavgbuydiffactor  = bullavgbuydiffactor
-        self.bullavgselldiffactor = bullavgselldiffactor
-        self.bearavgbuydiffactor  = bearavgbuydiffactor
-        self.bearavgselldiffactor = bearavgselldiffactor
+        self.stop_loss            = self.params.stop_loss
+        self.bullavgbuydiffactor  = self.params.bullavgbuydiffactor
+        self.bullavgselldiffactor = self.params.bullavgselldiffactor
+        self.bearavgbuydiffactor  = self.params.bearavgbuydiffactor
+        self.bearavgselldiffactor = self.params.bearavgselldiffactor
         self.isBull               = True
+        self.trans                = 0
+        self.total_fee            = self.params.total_fee
 
     def order(self, isbuy):
-        global trans
-        global total_fee
-
         if(isbuy and not self.position):
-            trans = trans + 1
-            total_fee = total_fee + (self.broker.getvalue()/1000)
+            self.trans = self.trans + 1
+            self.total_fee = self.total_fee + (self.broker.getvalue()/1000)
             self.buyprice = self.data.close[0]
             size = self.broker.get_cash() / self.data
             self.buy(size=size)
         elif(not isbuy and self.position):
-            trans = trans + 1
-            total_fee = total_fee + (self.broker.getvalue()/1000)
+            self.trans = self.trans + 1
+            self.total_fee = self.total_fee + (self.broker.getvalue()/1000)
             self.buyprice = -1
             self.close()
         
@@ -733,9 +758,11 @@ def rundata(strategy, args, plot, info):
     elif(strategy == MyStratV6):
         cerebro.addstrategy(strategy, args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9])
     elif(strategy == MyStratV7):
-        cerebro.addstrategy(strategy, args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7])
+
+        cerebro.addstrategy(strategy,dir_ema_period=args[0], ema_period=args[1],bullavgselldiffactor= args[2],bullavgbuydiffactor= args[3],bearavgselldiffactor= args[4],bearavgbuydiffactor= args[5],stop_loss= args[6],loss_treshold= args[7])
     elif(strategy == MyStratV8):
-        cerebro.addstrategy(strategy, args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8])
+        cerebro.addstrategy(strategy, trend_slow_ema_period=args[0], trend_fast_ema_period=args[1], diff_ema_period=args[2],bullavgselldiffactor= args[3],bullavgbuydiffactor= args[4],bearavgselldiffactor= args[5],bearavgbuydiffactor= args[6],stop_loss= args[7],loss_treshold= args[8])
+
         
     restr = ""
     for i in range(0, len(args)):
@@ -763,7 +790,7 @@ def rundata(strategy, args, plot, info):
 
     if(info):
         print("Strat: "+strategy.__name__)
-        print("Backtested Data of: "+ str(fromdate)+" ---->> "+str(todate))
+        #print("Backtested Data of: "+ str(fromdate)+" ---->> "+str(todate))
         print("In Pos:" + str(cerebro.broker.getposition(data).size != 0))
         print("start value:" + str(StartCash))
         print("final value:" + str(val))
@@ -787,6 +814,13 @@ def Optimize(strat,args,scan_range):
     else:
         return Optimize(strat,res,scan_range)
 
+def MultiOptimize(strat,args,scan_range):
+    old_args = args.copy()
+    res = OptRunData(strat,args,scan_range)
+    if(old_args == res):
+        return res
+    else:
+        return OptRunData(strat,res,scan_range)
 
 ### Strategy optimizer takes strat and default values list returns optimized values list for a time period ### 
 param_res = {}
@@ -838,46 +872,109 @@ def Optimizer(strat, args, scan_range):
     return op_args_list
 
 
-### Choose Time period of Backtest ###
-today = datetime.date.today()
-fromdate = today - datetime.timedelta(days=7)
-todate = today
+def initData():
+    ### Choose Time period of Backtest ###
+    #today = datetime.date.today()
+    #fromdate = today - datetime.timedelta(days=27)
+    #todate = today + datetime.timedelta(days=1)
+    
+    fromdate = datetime.datetime.strptime('2021-06-01', '%Y-%m-%d')
+    todate = datetime.datetime.strptime('2021-06-30', '%Y-%m-%d') #today #datetime.datetime.strptime('2021-05-30', '%Y-%m-%d')
+    fromdate = fromdate.date()
+    todate = todate.date()
 
-fromdate = datetime.datetime.strptime('2021-05-25', '%Y-%m-%d')
-todate = datetime.datetime.strptime('2021-06-20', '%Y-%m-%d') #today #datetime.datetime.strptime('2021-05-30', '%Y-%m-%d')
-fromdate = fromdate.date()
-todate = todate.date()
-
-### Get Data ###
-gd.get_Date_Data(fromdate,todate,False)
-path = str(fromdate)+"="+str(todate)+".csv"
-### Load Data ###
-data = bt.feeds.GenericCSVData(dataname=path, dtformat=2,timeframe=bt.TimeFrame.Minutes, fromdate=fromdate, todate=todate)
-print("BackTesting Data of: "+ str(fromdate)+" --->> "+str(todate))
-
-
-#strat = MyStratV7
-#args = [432, 161, 198, 682, 1251, 186, 74, -1]
-#val_list.append(rundata(strat,Optimize(strat,args,50),True,True))
-#val_list.append(rundata(MyStratV7 ,[432, 160, 198, 561, 1251, 186, 174, 2], False,False))
-
-#strat = MyStratV8
-#args = [537, 397, 155, 148, 165, 1384, 205, 48, -3]
-#val_list.append(rundata(strat,Optimize(strat,args,20),True,False))
+    ### Get Data ###
+    gd.get_Date_Data(fromdate,todate,True)
+    path = str(fromdate)+"="+str(todate)+".csv"
+    ### Load Data ###
+    data = bt.feeds.GenericCSVData(dataname=path,timeframe=bt.TimeFrame.Minutes, fromdate=fromdate, todate=todate)
+    print("BackTesting Data of: "+ str(fromdate)+" --->> "+str(todate))
+    return data
 
 
-#val_list.append(rundata(MyStratV8 ,[438, 480, 149, 148, 131, 1244, 205, 48, -3],False,False))
-#val_list.append(rundata(MyStratV8 ,[537, 397, 155, 148, 165, 1384, 205, 48, -3],False,False))
-#val_list.append(rundata(MyStratV8 ,[537, 397, 150, 148, 165, 1158, 205, 48, -6],False,False))
-#val_list.append(rundata(MyStratV8 ,[537, 397, 142, 148, 178, 1157, 205, 48, -3],False,False))
-#val_list.append(rundata(MyStratV8 ,[537, 334, 103, 148, 131, 1384, 174, 50, -7],False,False))
-#val_list.append(rundata(MyStratV8 ,[537, 397, 155, 148, 165, 1384, 205, 74, -1],False,False)) 
-#val_list.append(rundata(MyStratV8 ,[537, 397, 144, 148, 165, 1399, 206, 74, -1],False,False)) 
-#val_list.append(rundata(MyStratV8 ,[537, 397, 146, 148, 183, 1135, 192, 74, -1],False,False)) 
-#val_list.append(rundata(MyStratV8 ,[537, 397, 145, 148, 165, 1384, 205, 74, -1],False,False)) 
 
-val_list.append(rundata(MyStratV8 ,[537, 397, 155, 148, 165, 1384, 205, 74, -1],False,False)) 
+def OptRunData(strategy,default_args,scan_range):
+    print("Optimizing...")
+    print(default_args)
+    tstart = time.time()
+    val_list = []
+    args = default_args.copy()
+    for i in range(0,len(default_args)):
+        cerebro = bt.Cerebro(optreturn=False,maxcpus=6)
+        cerebro.adddata(data)
+
+        step    = int(max(abs(default_args[i]/100), 1))
+        diff    = step * scan_range
+        heigh   = default_args[i]+diff+step
+        low     = default_args[i]-diff-step
+        args[i] =(range(int(low), int(heigh), int(step)))
+
+        if(strategy == MyStratV7):
+            cerebro.optstrategy(strategy,dir_ema_period=args[0], ema_period=args[1], bullavgselldiffactor=args[2], bullavgbuydiffactor=args[3], bearavgselldiffactor=args[4], bearavgbuydiffactor=args[5], stop_loss=args[6], loss_treshold=args[7])
+        if(strategy == MyStratV8):
+            cerebro.optstrategy(strategy, trend_slow_ema_period=args[0], trend_fast_ema_period=args[1], diff_ema_period=args[2],bullavgselldiffactor= args[3],bullavgbuydiffactor= args[4],bearavgselldiffactor= args[5],bearavgbuydiffactor= args[6],stop_loss= args[7],loss_treshold= args[8])
+        
 
 
-print("Best value:"+str(max(val_list)))
+        stratruns = cerebro.run()
+    
+        for stratrun in stratruns:
+            pars = []
+            for strat in stratrun:
 
+
+                if(strategy == MyStratV7):
+                    pars.append(strat.params.dir_ema_period)
+                    pars.append(strat.params.ema_period)
+                    pars.append(strat.params.bullavgselldiffactor )
+                    pars.append(strat.params.bullavgbuydiffactor  )
+                    pars.append(strat.params.bearavgselldiffactor )
+                    pars.append(strat.params.bearavgbuydiffactor  )
+                    pars.append(strat.params.stop_loss            )
+                    pars.append(strat.params.loss_treshold        )
+
+                if(strategy == MyStratV8):
+                    pars.append(strat.params.trend_slow_ema_period)
+                    pars.append(strat.params.trend_fast_ema_period)
+                    pars.append(strat.params.diff_ema_period      )
+                    pars.append(strat.params.bullavgselldiffactor )
+                    pars.append(strat.params.bullavgbuydiffactor  )
+                    pars.append(strat.params.bearavgselldiffactor )
+                    pars.append(strat.params.bearavgbuydiffactor  )
+                    pars.append(strat.params.stop_loss            )
+                    pars.append(strat.params.loss_treshold        )
+
+                val = strat.broker.getvalue()-strat.params.total_fee
+                print(val)
+                val_list.append([val,pars])
+                res = max(val_list, key=itemgetter(0))
+                args[i] = res[1][i]
+        # print out the result
+    tend = time.time()
+    print('Time used:', str(tend - tstart))
+    print(args)
+    return args
+
+
+if __name__ == '__main__':
+
+    data = initData()
+    
+    #val_list.append(rundata(MyStratV7,Optimize(MyStratV7,[432, 146, 169, 540, 995, 126, 174, 8],10),True,False))
+    
+    #val_list.append(rundata(MyStratV7,[680, 27, 141, 151, 636, 518, 133, 78, 25],False,False))
+    #val_list.append(rundata(MyStratV7,[433, 160, 149, 561, 1506, 185, 68, -15],False,False))
+    #val_list.append(rundata(MyStratV7,[432,146,169,540,995,126,32,-14],False,False))
+    #val_list.append(rundata(MyStratV7,[432, 146, 169, 540, 995, 126, 174, 8],True,False))
+
+    #Mystrat Live
+    #val_list.append(rundata(MyStratV8,[537, 397, 145, 154, 171, 1212, 205, 44, 1],True,False))
+
+    val_list.append(rundata(MyStratV8,[537, 397, 145, 154, 171, 1124, 197, 46, 1],True,False))
+
+
+    ##Test##
+    #val_list.append(rundata(MyStratV8,MultiOptimize(MyStratV8,[537, 397, 145, 154, 171, 1124, 205, 44, 1],10),True,False))
+
+
+    print("Best value:"+str(max(val_list)))
