@@ -25,19 +25,21 @@ def speak(text):
 
 
 ### Trade Strategy ###
-class MyStratV8(bt.Strategy):
-    def __init__(self,trend_slow_ema_period,trend_fast_ema_period, diff_ema_period, bullavgselldiffactor, bullavgbuydiffactor, bearavgselldiffactor, bearavgbuydiffactor, stop_loss, loss_treshold):
-        self.diff_ema             = bt.ind.EMA(period=diff_ema_period)
-        self.trend_slow_ema       = bt.ind.SMA(period=trend_slow_ema_period)
-        self.trend_fast_ema       = bt.ind.EMA(period=trend_fast_ema_period)
-        self.loss_treshold        = loss_treshold
-        self.buyprice             = -1
-        self.stop_loss            = stop_loss
-        self.bullavgbuydiffactor  = bullavgbuydiffactor
-        self.bullavgselldiffactor = bullavgselldiffactor
-        self.bearavgbuydiffactor  = bearavgbuydiffactor
-        self.bearavgselldiffactor = bearavgselldiffactor
-        self.isBull               = True
+class MyStratV2(bt.Strategy):
+    def __init__(self,p0,p1,p2,p3,p4,p5,p6,p7,p8):
+        self.trend_slow_ema       =  bt.ind.SMA(period=p0)
+        self.trend_fast_ema       =  bt.ind.EMA(period=p1)
+        self.diff_ema             =  bt.ind.EMA(period=p2)
+        self.bullavgselldiffactor =  p3
+        self.bullavgbuydiffactor  =  p4
+        self.bearavgselldiffactor =  p5
+        self.bearavgbuydiffactor  =  p6
+        self.stop_loss            =  p7
+        self.loss_treshold        =  p8
+
+        self.buyprice             =  -1
+        self.isBull               =  False
+        self.ordered              =  False
 
 
 
@@ -53,29 +55,31 @@ class MyStratV8(bt.Strategy):
 
     def orderer(self, isbuy):
         if(isbuy):
-            self.buyprice = self.data.close[0]
             cash,value = self.broker.get_wallet_balance(COIN_REFER)
             size = int(cash-1) / self.data.close[0]
             log("Buy state")
             if(self.live_data and cash > 11.0):
+                self.order=self.buy(size=size)
+                self.buyprice = self.data.close[0]
                 speak(Buytest)
                 log("Buyed pos at:"+str(self.data.close[0]))
-                self.order=self.buy(size=size)
         else:
-            self.buyprice = -1
             coin,val = self.broker.get_wallet_balance(COIN_TARGET)
             log("Sell state")
             if(self.live_data and (coin * self.data.close[0]) > 11.0):
+                self.order=self.sell(size = coin)
+                self.buyprice = -1
                 speak(Selltext)
                 log("Closed pos at:"+str(self.data.close[0]))
-                self.order=self.sell(size = coin)
 
     def next(self):
-        avgdiff     = (self.data - self.diff_ema)
-        tmp         = (self.trend_fast_ema > self.trend_slow_ema)
-        isTrendSame = (tmp==self.isBull)
-        isSellable  = (self.data.close[0] > self.buyprice - (self.buyprice * self.loss_treshold/1000))
-        isStop      = (self.data.close[0] < self.buyprice - (self.buyprice * self.stop_loss/1000))
+        avgdiff      = (self.data - self.diff_ema)
+        tmp          = (self.trend_fast_ema > self.trend_slow_ema)
+        isTrendSame  = (tmp==self.isBull)
+        isSellable   = (self.data.close[0] > self.buyprice - (self.buyprice * self.loss_treshold/1000))
+        isStop       = (self.data.close[0] < self.buyprice - (self.buyprice * self.stop_loss/1000))
+        isProfitStop = (self.data.close[0] > self.buyprice - self.buyprice  * self.stop_loss*1.5/1000 and isSellable)
+        self.ordered =False
 
 
         if self.live_data:
@@ -168,7 +172,7 @@ def main():
     cerebro.adddata(data)
     
     # Include Strategy
-    cerebro.addstrategy(MyStratV8, 442, 408, 178, 154, 171, 1396, 195, 51, -1) 
+    cerebro.addstrategy(MyStratV2, 356, 454, 190, 79, 187, 178, 192, 13, -37) 
     # Starting backtrader bot 
     initial_value = cerebro.broker.getvalue()
     log('Starting Portfolio Value: %.2f' % initial_value)
