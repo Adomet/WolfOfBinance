@@ -74,7 +74,7 @@ class MyStratV2(bt.Strategy):
         if(newparams != oldparams):
             self.updateParams(newparams)
             log("New Params")
-            log(self.getOldParams())
+            log(str(self.getOldParams()))
 
 
 
