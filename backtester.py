@@ -228,7 +228,7 @@ def OptRunData(strategy,default_args,scan_range,data):
     val_list = []
     args = default_args.copy()
     for i in range(0,len(default_args)):
-        cerebro = bt.Cerebro(optreturn=False,maxcpus=7)
+        cerebro = bt.Cerebro(optreturn=False,maxcpus=1)
 
         step    = int(max(abs(default_args[i]/100), 1))
         diff    = step * scan_range

@@ -72,9 +72,9 @@ class MyStratV2(bt.Strategy):
         oldparams = self.getOldParams()
 
         if(newparams != oldparams):
-            print("New Params")
             self.updateParams(newparams)
-            print(self.getOldParams())
+            log("New Params")
+            log(self.getOldParams())
 
 
 
@@ -82,7 +82,7 @@ class MyStratV2(bt.Strategy):
         dn = data._name
         dt = datetime.datetime.now()
         msg= 'Data Status: {}'.format(data._getstatusname(status))
-        print(str(dt)+" "+str(dn)+" "+str(msg))
+        log(str(dt)+" "+str(dn)+" "+str(msg))
         if data._getstatusname(status) == 'LIVE':
             self.live_data = True
         else:
