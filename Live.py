@@ -41,13 +41,48 @@ class MyStratV2(bt.Strategy):
         self.isBull               =  False
         self.ordered              =  False
 
+    def updateParams(self,newparams):
+        self.trend_slow_ema.p.period = newparams[0]
+        self.trend_fast_ema.p.period = newparams[1]
+        self.diff_ema.p.period       = newparams[2]
+        self.bullavgselldiffactor    = newparams[3]
+        self.bullavgbuydiffactor     = newparams[4]
+        self.bearavgselldiffactor    = newparams[5]
+        self.bearavgbuydiffactor     = newparams[6]
+        self.stop_loss               = newparams[7]
+        self.loss_treshold           = newparams[8]
+    
+    def getOldParams(self):
+        return[self.trend_slow_ema.p.period ,
+               self.trend_fast_ema.p.period ,
+               self.diff_ema.p.period       ,
+               self.bullavgselldiffactor    ,
+               self.bullavgbuydiffactor     ,
+               self.bearavgselldiffactor    ,
+               self.bearavgbuydiffactor     ,
+               self.stop_loss               ,
+               self.loss_treshold           ]
+
+
+    def getParams(self):
+        with open('params.txt') as f:
+            line = f.readline()
+        newparams = line.split(',')
+        newparams = [int(i) for i in newparams]
+        oldparams = self.getOldParams()
+
+        if(newparams != oldparams):
+            print("New Params")
+            self.updateParams(newparams)
+            print(self.getOldParams())
+
 
 
     def notify_data(self, data, status, *args, **kwargs):
         dn = data._name
         dt = datetime.datetime.now()
         msg= 'Data Status: {}'.format(data._getstatusname(status))
-        print(dt,dn,msg)
+        print(str(dt)+" "+str(dn)+" "+str(msg))
         if data._getstatusname(status) == 'LIVE':
             self.live_data = True
         else:
@@ -124,6 +159,10 @@ class MyStratV2(bt.Strategy):
 
         if (isStop):
             self.orderer(False)
+        
+        if(self.live_data):
+            self.getParams()
+
 
 
 def main():
@@ -172,7 +211,7 @@ def main():
     cerebro.adddata(data)
     
     # Include Strategy
-    cerebro.addstrategy(MyStratV2, 356, 454, 193, 79, 122, 178, 191, 16, -37) 
+    cerebro.addstrategy(MyStratV2, 356, 454, 190, 79, 187, 178, 192, 13, -37) 
     # Starting backtrader bot 
     initial_value = cerebro.broker.getvalue()
     log('Starting Portfolio Value: %.2f' % initial_value)

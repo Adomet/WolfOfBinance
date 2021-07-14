@@ -211,24 +211,24 @@ def rundata(strategy, args, plot, info):
 
     return val
 
-def optimizeStrat(strat,args,scan_range):
+def optimizeStrat(strat,args,scan_range,data):
     old_args = args.copy()
-    res = OptRunData(strat,args,scan_range)
+    res = OptRunData(strat,args,scan_range,data)
     if(old_args == res):
         return res
     else:
-        return optimizeStrat(strat,res,scan_range)
+        return optimizeStrat(strat,res,scan_range,data)
 
 
 
-def OptRunData(strategy,default_args,scan_range):
+def OptRunData(strategy,default_args,scan_range,data):
     print("Optimizing...")
     print(default_args)
     tstart = time.time()
     val_list = []
     args = default_args.copy()
     for i in range(0,len(default_args)):
-        cerebro = bt.Cerebro(optreturn=False,maxcpus=6)
+        cerebro = bt.Cerebro(optreturn=False,maxcpus=7)
 
         step    = int(max(abs(default_args[i]/100), 1))
         diff    = step * scan_range
@@ -243,9 +243,7 @@ def OptRunData(strategy,default_args,scan_range):
         elif(strategy ==MyStratV2):
             cerebro.optstrategy(strategy,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8])
 
-        
-
-
+    
         cerebro.adddata(data)
         cerebro.addsizer(PercentSizer,percents=99)
         broker = cerebro.getbroker()
@@ -280,7 +278,7 @@ def OptRunData(strategy,default_args,scan_range):
 
 
 
-def initData(traindays,testdays):
+def initData(traindays,testdays,refresh=False):
     ### Choose Time period of Backtest ###
     today    = datetime.date.today() #- datetime.timedelta(days=4)
     today    = today - datetime.timedelta(days=testdays)
@@ -293,7 +291,7 @@ def initData(traindays,testdays):
     #todate = todate.date()
 
     ### Get Data ###
-    gd.get_Date_Data(fromdate,todate,False)
+    gd.get_Date_Data(fromdate,todate,refresh)
     path = str(fromdate)+"="+str(todate)+".csv"
     ### Load Data ###
     data = bt.feeds.GenericCSVData(name=COIN_TARGET, dataname=path,timeframe=bt.TimeFrame.Minutes, fromdate=fromdate, todate=todate)
@@ -305,30 +303,25 @@ def initData(traindays,testdays):
 
 val_list =list()
 if __name__ == '__main__':
-    
-    data = initData(45,0)
+   #lst = [14,15,16]
 
-    #val_list.append(rundata(RSIStrategy,[14,25,75,50,-1],True,False))
-    #val_list.append(rundata(AVGDiff,optimizeStrat(AVGDiff,[412,179,154,71,-3],50),True,False))
-    #val_list.append(rundata(MyStratV2,[442, 408, 178, 154, 171, 1396, 195, 51, -1],True,False))
-
-    #val_list.append(rundata(MyStratV2,[408,462,199,154,167,1239,174,18,-8],False,False))
-    val_list.append(rundata(MyStratV2,[356,454,190,79,187,178,192,13,-37],True,False))
-
-    #val_list.append(rundata(MyStratV2,[414,470,193,130,170,494,191,33,-27],False,False))
-
-
-
-    #val_list.append(rundata(MyStratV2,optimizeStrat(MyStratV2,[442, 408, 178, 154, 171, 1396, 195, 51, -1], 30),True,False))
-    #val_list.append(rundata(MyStratV2,optimizeStrat(MyStratV2,[408, 462, 199, 154, 167, 1239, 174, 18, -8], 30),True,False))
-    #val_list.append(rundata(MyStratV2,optimizeStrat(MyStratV2,[356, 454, 190, 79 , 187, 178 , 192, 13,-37], 30),True,False))
-    #val_list.append(rundata(MyStratV2,optimizeStrat(MyStratV2,[414,470,193,130,170,494,191,33,-27], 50),True,False))
+   #for t in lst:
+   #    print("testing",t)
+   #    data = initData(t,8)
+   #    args = optimizeStrat(MyStratV2,[356, 454, 190, 79, 187, 178, 192, 13, -37], 20)
+   #    data = initData(8,0)
+   #    val = rundata(MyStratV2,args,False,False)
+   #    val_list.append([val,t])
+   # 
+   #    print("Best value:"+str(max(val_list,key=itemgetter(0))))
 
 
+       
+    data = initData(47,0,False)
 
-    #val_list.append(rundata(MyStratV2,optimizeStrat(MyStratV2,[356,454,190,79,187,178,192,13,-37], 10),True,False))
-
-
+    val_list.append(rundata(MyStratV2,[356, 454, 193, 79, 122, 178, 191, 16, -37],False,False))
+    val_list.append(rundata(MyStratV2,[356, 454, 190, 79, 187, 178, 192, 13, -37],False,False))
+    val_list.append(rundata(MyStratV2,optimizeStrat(MyStratV2,[356, 454, 190, 79, 187, 178, 192, 13, -37], 20,data),False,False))
 
 
     print("Best value:"+str(max(val_list)))
