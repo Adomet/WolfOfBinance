@@ -1,3 +1,5 @@
+from multiprocessing import log_to_stderr
+from backtrader.dataseries import TimeFrame
 from gtts import gTTS
 from ccxtbt import CCXTStore
 from config import BINANCE, ENV, PRODUCTION, COIN_TARGET, COIN_REFER, DEBUG
@@ -24,58 +26,67 @@ def speak(text):
     os.remove(filename)
 
 
+class TD9(bt.Indicator):
+    lines = ('tdnine',)
+    plotinfo = dict(
+        plot=True,
+        plotname='tdnine',
+        subplot=True,
+        plotlinelabels=True)
+
+
+    def __init__(self):
+        self.addminperiod(5)
+        self.prvcandleclose =-1
+        self.tdnine = 0
+
+    def next(self):
+        if(self.data.high[-4] < self.data.close):
+            self.prvcandleclose  = self.data.close
+            self.tdnine          = self.tdnine +1
+        
+        elif(self.tdnine > 0):
+            self.tdnine =0
+        
+        if(self.data.low[-4] > self.data.close):
+            self.prvcandleclose  = self.data.close
+            self.tdnine          = self.tdnine -1
+        
+        elif(self.tdnine < 0):
+            self.tdnine =0
+
+
+        self.prvcandleclose = self.data.close
+        self.lines.tdnine[0]     = self.tdnine
+
+
+
 ### Trade Strategy ###
-class MyStratV2(bt.Strategy):
-    def __init__(self,p0,p1,p2,p3,p4,p5,p6,p7,p8):
-        self.trend_slow_ema       =  bt.ind.SMA(period=p0)
-        self.trend_fast_ema       =  bt.ind.EMA(period=p1)
-        self.diff_ema             =  bt.ind.EMA(period=p2)
-        self.bullavgselldiffactor =  p3
-        self.bullavgbuydiffactor  =  p4
-        self.bearavgselldiffactor =  p5
-        self.bearavgbuydiffactor  =  p6
-        self.stop_loss            =  p7
-        self.loss_treshold        =  p8
+class MyStratLive(bt.Strategy):
+    params=(('p0',0),('p1',0),('p2',0),('p3',0),('p4',0),('p5',0),('p6',0),('p7',0),('p8',0),('p9',0))
+    def __init__(self):
+
+        self.rsi                  =  bt.ind.RelativeStrengthIndex(self.data, period=int(self.params.p0/10))
+        self.rsi_high             =  self.params.p1
+        self.rsi_low              =  self.params.p2
+        
+        self.tdnine               =  TD9()
+        self.td9_high             =  self.params.p3
+        self.td9_low              =  self.params.p4
+
+        self.diff_ema             =  bt.ind.TripleExponentialMovingAverage(period=self.params.p5)
+        self.avgselldiffactor     =  self.params.p6
+        self.avgbuydiffactor      =  self.params.p7
+        self.diff_ema_heigh       =  self.diff_ema + (self.diff_ema / self.avgselldiffactor * 10) 
+        self.diff_ema_low         =  self.diff_ema - (self.diff_ema / self.avgbuydiffactor  * 10)           
+
+        self.stop_loss            =  self.params.p8
+        self.RiskReward           =  self.params.p9
+        self.takeprofit           =  self.stop_loss * self.RiskReward / 100
 
         self.buyprice             =  -1
         self.isBull               =  False
         self.ordered              =  False
-
-    def updateParams(self,newparams):
-        self.trend_slow_ema.p.period = newparams[0]
-        self.trend_fast_ema.p.period = newparams[1]
-        self.diff_ema.p.period       = newparams[2]
-        self.bullavgselldiffactor    = newparams[3]
-        self.bullavgbuydiffactor     = newparams[4]
-        self.bearavgselldiffactor    = newparams[5]
-        self.bearavgbuydiffactor     = newparams[6]
-        self.stop_loss               = newparams[7]
-        self.loss_treshold           = newparams[8]
-    
-    def getOldParams(self):
-        return[self.trend_slow_ema.p.period ,
-               self.trend_fast_ema.p.period ,
-               self.diff_ema.p.period       ,
-               self.bullavgselldiffactor    ,
-               self.bullavgbuydiffactor     ,
-               self.bearavgselldiffactor    ,
-               self.bearavgbuydiffactor     ,
-               self.stop_loss               ,
-               self.loss_treshold           ]
-
-
-    def getParams(self):
-        with open('params.txt') as f:
-            line = f.readline()
-        newparams = line.split(',')
-        newparams = [int(i) for i in newparams]
-        oldparams = self.getOldParams()
-
-        if(newparams != oldparams):
-            self.updateParams(newparams)
-            log("New Params")
-            log(str(self.getOldParams()))
-
 
 
     def notify_data(self, data, status, *args, **kwargs):
@@ -89,6 +100,9 @@ class MyStratV2(bt.Strategy):
             self.live_data = False
 
     def orderer(self, isbuy):
+        if(self.ordered):
+            return
+            
         if(isbuy):
             cash,value = self.broker.get_wallet_balance(COIN_REFER)
             size = int(cash-1) / self.data.close[0]
@@ -108,13 +122,16 @@ class MyStratV2(bt.Strategy):
                 log("Closed pos at:"+str(self.data.close[0]))
 
     def next(self):
-        avgdiff      = (self.data - self.diff_ema)
-        tmp          = (self.trend_fast_ema > self.trend_slow_ema)
-        isTrendSame  = (tmp==self.isBull)
-        isSellable   = (self.data.close[0] > self.buyprice - (self.buyprice * self.loss_treshold/1000))
+        self.ordered = False
         isStop       = (self.data.close[0] < self.buyprice - (self.buyprice * self.stop_loss/1000))
-        isProfitStop = (self.data.close[0] > self.buyprice - self.buyprice  * self.stop_loss*1.5/1000 and isSellable)
-        self.ordered =False
+        isTakeProfit = (self.data.close[0] > self.buyprice + (self.buyprice * self.takeprofit/1000))
+
+        td9selltrigger     = self.tdnine        >=  self.td9_high
+        td9buytrigger      = self.tdnine        <= -self.td9_low
+        rsiselltrigger     = self.rsi           >=  self.rsi_high 
+        rsibuytrigger      = self.rsi           <=  self.rsi_low
+        avgdiffselltrigger = self.data.close[0] >= self.diff_ema_heigh
+        avgdiffbuytrigger  = self.data.close[0] <= self.diff_ema_low
 
 
         if self.live_data:
@@ -123,45 +140,27 @@ class MyStratV2(bt.Strategy):
             cash = 'NA'
 
         for data in self.datas:
-            log('{} - {} | Cash {} | O: {} H: {} L: {} C: {} V:{} EMA:{}'.format(data.datetime.datetime()+datetime.timedelta(minutes=180),
+            log('{} - {} | Cash {} | O: {} H: {} L: {} C: {} V:{} EMA:{}'.format(data.datetime.datetime()+datetime.timedelta(minutes=195),
                 data._name, cash, data.open[0], data.high[0], data.low[0], data.close[0], data.volume[0],
                 self.diff_ema[0]))
+            
 
         #print("pos:"+str(self.position.size))
 
-        if self.isBull != tmp:
-            msg = "Switched: "+(" Bull" if tmp else " Bear")+" at: "+str(self.data.close[0])
-            speak(msg)
-            log(msg)
-
-
-        if (self.isBull and not isTrendSame and isSellable):
-            self.orderer(False)
-        
-        if (not self.isBull and not isTrendSame):
+        if((td9buytrigger and rsibuytrigger and avgdiffbuytrigger)):
+            log("IND BUY")
             self.orderer(True)
-
-
-        self.isBull = tmp
-
-        if (self.isBull):
-            if avgdiff < -self.diff_ema*10/self.bullavgbuydiffactor:
-                self.orderer(True)
-
-            if avgdiff > self.diff_ema*10/self.bullavgselldiffactor and isSellable:
-                self.orderer(False)
-        else:
-            if avgdiff < -self.diff_ema*10/self.bearavgbuydiffactor:
-                self.orderer(True)
-
-            if avgdiff > self.diff_ema*10/self.bearavgselldiffactor and isSellable:
-                self.orderer(False)
-
-        if (isStop):
+        elif((td9selltrigger  and rsiselltrigger and avgdiffselltrigger)):
+            log("IND SELL")
             self.orderer(False)
-        
-        if(self.live_data):
-            self.getParams()
+        elif(isStop):
+            log("STOPPED")
+            self.orderer(False)
+        elif(isTakeProfit and self.buyprice != -1):
+            log("TAKE PROFIT")
+            self.orderer(False)
+
+
 
 
 
@@ -175,7 +174,7 @@ def main():
         'enableRateLimit': True,
     }
 
-    store = CCXTStore(exchange='binance', currency=COIN_REFER, config=broker_config, retries=5, debug=DEBUG)
+    store = CCXTStore(exchange='binance', currency=COIN_REFER, config=broker_config, retries=99, debug=DEBUG)
     broker_mapping = {
         'order_types': {
             bt.Order.Market: 'market',
@@ -197,21 +196,25 @@ def main():
 
     broker = store.getbroker(broker_mapping=broker_mapping)
     cerebro.setbroker(broker)
-    hist_start_date = datetime.datetime.utcnow() - datetime.timedelta(minutes=1000)
+    hist_start_date = datetime.datetime.utcnow() - datetime.timedelta(minutes=15*1000)
     data = store.getdata( dataname='%s/%s' % (COIN_TARGET, COIN_REFER),
         name='%s%s' % (COIN_TARGET, COIN_REFER),
         timeframe=bt.TimeFrame.Minutes,
         fromdate=hist_start_date,
-        compression=1,
+        compression=15,
         ohlcv_limit=100000000,
         drop_newest=True
     )
+
+    #cerebro.resampledata(data, timeframe=bt.TimeFrame.Minutes, compression=15)
 
     # Add the feed
     cerebro.adddata(data)
     
     # Include Strategy
-    cerebro.addstrategy(MyStratV2, 356, 454, 190, 79, 187, 178, 192, 13, -37) 
+    #cerebro.addstrategy(MyStratLive, 356, 454, 190, 79, 187, 178, 192, 13, -37)
+    args = [180,65,35,9,2,304,185,226,95,256]
+    cerebro.addstrategy(MyStratLive,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9])
     # Starting backtrader bot 
     initial_value = cerebro.broker.getvalue()
     log('Starting Portfolio Value: %.2f' % initial_value)
@@ -224,7 +227,6 @@ def main():
 
     if DEBUG:
         cerebro.plot()
-
 
 def wob():
     try:
