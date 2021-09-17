@@ -2,7 +2,7 @@ from math import fabs, log
 from multiprocessing import set_forkserver_preload
 from operator import isub, itemgetter, truth
 from os import name, stat
-
+from binance.client import Client
 from backtrader import broker, cerebro, order,sizers
 import backtrader as bt
 from backtrader.sizers.percents_sizer import PercentSizer
@@ -484,7 +484,7 @@ class MyStratV6(bt.Strategy):
     params=(('p0',0),('p1',0),('p2',0),('p3',0),('p4',0),('p5',0),('p6',0),('p7',0),('p8',0),('p9',0),('p10',0),('p11',0),('p12',0),('p13',0),('p14',0),('p15',0),('p16',0),('p17',0),('p18',0),('p19',0),('p20',0),('p21',0))
     def __init__(self):
 
-        self.supertrend           =  SuperTrend(self.data,period=max(self.params.p0,1),multiplier=max(self.params.p1,1))
+        self.supertrend           =  SuperTrend(self.data,period=max(self.params.p0,1),multiplier=max(self.params.p1/10,1))
         self.superisBull          =  bt.ind.CrossOver(self.data.close,self.supertrend)
         self.isbull               =  False
 
@@ -770,7 +770,7 @@ def OptRunData(strategy,default_args,scan_range,data):
     for i in range(0,len(default_args)):
         if(default_args[i] == -9999):
             continue
-        cerebro = bt.Cerebro(optreturn=False,maxcpus=7)
+        cerebro = bt.Cerebro(optreturn=False,maxcpus=8)
 
         step    = int(max(abs(default_args[i]/100), 1))
         diff    = step * scan_range
@@ -830,16 +830,16 @@ def OptRunData(strategy,default_args,scan_range,data):
     #print(args)
     return args
 
-def initData(traindays,testdays,target=COIN_TARGET,refresh=False):
+def initData(traindays,testdays,timeframe,target=COIN_TARGET,refresh=False):
     ### Choose Time period of Backtest ###
     today    = datetime.date.today() #- datetime.timedelta(days=4)
     today    = today - datetime.timedelta(days=testdays)
     fromdate = today - datetime.timedelta(days=traindays)
     todate   = today + datetime.timedelta(days=1)
     ### Get Data ###
-    path = gd.get_Date_Data(fromdate,todate,target,refresh)
+    path = gd.get_Date_Data(fromdate,todate,timeframe,target,refresh)
     ### Load Data ###
-    data = bt.feeds.GenericCSVData(name=COIN_TARGET, dataname=path, timeframe=bt.TimeFrame.Minutes, fromdate=fromdate, todate=todate)
+    data = bt.feeds.GenericCSVData(name=target, dataname=path, timeframe=bt.TimeFrame.Minutes, fromdate=fromdate, todate=todate)
     print("BackTesting Data of: "+ path)
     return data
 
@@ -874,78 +874,33 @@ def getBestParam(start,end,strat,params,paramindex,data,step=1):
 val_list =list()
 if __name__ == '__main__':
 
-    data = initData(270,0,target="AVAX",refresh=False) 
+    #Dayz = 239
+    Dayz = 240
 
-   # MyStratV1
-
-    #val_list.append(rundata(MyStratV1,[432,422,187,338,595,303,531,164,189],data,False,False)) 
-    
-    #val_list.append(rundata(MyStratV1,[138,121,61,36,143,72,252,113,137],data,True,False)) 
-
-
-    #val_list.append(rundata(MyStratV1,optimizeStrat(MyStratV1,[138,121,61,36,143,72,252,113,137], 2,data),data,True,False))
-
-
-
-    # MyStratV2
-    #val_list.append(rundata(MyStratV2,[438,124,356,1,1,1,1,1,1,1],data,True,False)) #15 min 
-    #val_list.append(rundata(MyStratV2,optimizeStrat(MyStratV2,[438,124,356,1,1,1,1,1,1,1], 2,data),data,True,False))
-
-
-    #val_list.append(rundata(MyStratV2,optimizeStrat(MyStratV2,[1,1,1,1,1,1,1,1,1,1], 30,data),True,False))
-    # print("Best value:"+str(max(val_list,key=itemgetter(0))))
-
-    # MyStratV3
-
-    #testcoins = ["BTC","ETH","AVAX","BNB","OMG","ICP"]
-    #val_list.append(TestStratAllCoins(240,testcoins,MyStratV3,[29,81,30,7,10,149,416 ,1,1])) #B
-
-    #val_list.append(rundata(MyStratV3,[17,66,34,8,3,158,188,1,1],data,True,False)) #15 min 
-    
-    #val_list.append(rundata(MyStratV3,optimizeStrat(MyStratV3,[17,66,34,8,3,158,188,1,1,1], 2,data),data,True,False))
-
-    # MyStratV4
-
-    #val_list.append(rundata(MyStratV4,[17,66,34,8,3,438,124,356,158,188],data,True,False)) #15 min 
-    #val_list.append(rundata(MyStratV4,[21,71,35,10,2,434,125,341,132,238],data,False,False)) 
-
-    #val_list.append(rundata(MyStratV4,optimizeStrat(MyStratV4,[21,66,35,10,2,434,125,341,150,210], 64,data),data,True,False))
-
-    # MyStratV5
-
-    #val_list.append(rundata(MyStratV5,[18*10,65,35,9,2,304,185,226,95,256],data,True,False)) 
-    #val_list.append(rundata(MyStratV5,[14*10,70,30,9,2,304,185,226,95,256],data,False,False)) 
-
-
-    #val_list.append(rundata(MyStratV5,optimizeStrat(MyStratV5,[180,65,35,9,2,301,185,230,95,256], 64,data),data,True,False))
-    #val_list.append(rundata(MyStratV5,optimizeStrat(MyStratV5,[180,65,35,9,2,301,185,230,95,256], 64,data),data,True,False))
-
-
+    #15min
+    #data = initData(Dayz,0,Client.KLINE_INTERVAL_15MINUTE,"AVAX",False) 
     # MyStratV6
-    #val_list.append(rundata(MyStratV6,[1,5,18,65,44,9,1,286,181,332,103,260,18,65,35,9,2,301,185,224,94,189],data,True,True)) 
-    #val_list.append(rundata(MyStratV6,optimizeStrat(MyStratV6,[5,5,18,65,35,9,2,301,185,230,95,256,18,65,35,9,2,301,185,230,95,256], 64,data),data,True,False))
-    #val_list.append(rundata(MyStratV6,optimizeStrat(MyStratV6,[1,5,19,64,44,10,1,286,181,332,105,256,18,65,35,9,2,310,185,228,94,189], 1,data),data,True,False))
+    #val_list.append(rundata(MyStratV6,optimizeStrat(MyStratV6,[1,50,19,64,44,10,1,286,181,332,105,256,18,65,35,9,2,310,185,228,94,189], 32,data),data,True,False))
 
-    # MyStratV7
-    #val_list.append(rundata(MyStratV7,[0, 5, 19, 286, 65, 44, 9, 1, 181, 332, 104, 256, 65, 35, 9, 2, 185, 224, 91, 189, -9999, -9999, -9999, -9999],data,True,False))
-    #val_list.append(rundata(MyStratV7,optimizeStrat(MyStratV7,[1,5,18,286,64,44,10,1,181,332,105,256,65,35,9,2,185,228,94,189,-9999,-9999,-9999,-9999], 1,data),data,True,False))
+    #val_list.append(rundata(MyStratV6,[1,50,19,64,44,10,1,286,181,332,105,256,18,65,35,9,2,310,185,228,94,189],data,False,False))
+    
+    #5min
+    data = initData(Dayz,0,Client.KLINE_INTERVAL_5MINUTE,"AVAX",False)
 
-    ### Production ###
+    #val_list.append(rundata(MyStratV6,optimizeStrat(MyStratV6,[8,56,3,84,62,3,-15,272,164,270,80,160,12,74,35,9,-7,349,185,228,79,175], 4,data),data,True,False))
+    val_list.append(rundata(MyStratV6,optimizeStrat(MyStratV6,[5,50,7,84,62,3,-15,190,164,262,52,101,15,74,37,9,-7,328,185,270,49,127], 64,data),data,True,False))
 
+
+    #val_list.append(rundata(MyStratV6,[8,56,3,84,62,3,-15,272,164,270,80,160,12,74,35,9,-7,349,185,228,79,175],data,False,False))
+
+    ### Production ### 
     #val_list.append(rundata(MyStratV3,[17,66,34,8,3,158,188,1,1,1],data,False,False))
     #val_list.append(rundata(MyStratV4,[21,71,35,10,2,434,125,341,132,238],data,False,False)) 
     #val_list.append(rundata(MyStratV5,[18,65,35,9,2,301,185,230,95,256],data,True,False)) 
-    val_list.append(rundata(MyStratV6,[1,5,19,64,44,10,1,286,181,332,105,256,18,65,35,9,2,310,185,228,94,189],data,True,False))
-    val_list.append(rundata(MyStratV7,[1,5,18,286,64,44,10,1,181,332,105,256,65,35,9,2,185,228,94,189,1,1,1,1],data,False,False))
-    val_list.append(rundata(MyStratV7,[0,5,19,286,65,44,9,1,181,332,104,256,65,35,9,2,185,224,91,189,-9999,-9999,-9999,-9999],data,False,False))
 
 
+    #val_list.append(rundata(MyStratV6,[3,50,3,84,62,3,-15,272,164,270,50,100,12,74,35,9,-7,349,185,228,50,100],data,True,False))
 
-
-
-     
-    #-255, 5, 19, 64, 44, 10, 1, 286, 181, 332, 105, 256, 18, 65, 35, 9, 2, 310, 185, 228, 94, 189
-    #-580, 5, 19, 64, 44, 10, 1, 286, 181, 332, 105, 256, 18, 65, 35, 9, 2, 310, 185, 228, 94, 189
 
 
     #print("Best value:"+str(max(val_list)))

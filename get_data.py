@@ -4,9 +4,9 @@ import csv,datetime,os
 
 
 
-def get_Date_Data(fromdate,todate,target,reGet):
+def get_Date_Data(fromdate,todate,timeframe,target,reGet):
     client = Client(BINANCE.get("key"),BINANCE.get("secret"))
-    path = "data/"+target+"-"+COIN_REFER+"_"+str(fromdate)+"="+str(todate)+".csv"
+    path = "data/"+target+"-"+COIN_REFER+"_"+timeframe+"_"+str(fromdate)+"="+str(todate)+".csv"
     if(os.path.exists(path) and not reGet):
         return path
 
@@ -15,7 +15,7 @@ def get_Date_Data(fromdate,todate,target,reGet):
     
     print("Getting Data of: "+ path)
     
-    candlesticks = client.get_historical_klines(target + COIN_REFER, Client.KLINE_INTERVAL_15MINUTE, str(fromdate), str(todate))
+    candlesticks = client.get_historical_klines(target + COIN_REFER, timeframe, str(fromdate), str(todate))
     
     
     for candlestick in  candlesticks:

@@ -122,8 +122,9 @@ class SuperTrend(bt.Indicator):
 class MyStratLive(bt.Strategy):
     params=(('p0',0),('p1',0),('p2',0),('p3',0),('p4',0),('p5',0),('p6',0),('p7',0),('p8',0),('p9',0),('p10',0),('p11',0),('p12',0),('p13',0),('p14',0),('p15',0),('p16',0),('p17',0),('p18',0),('p19',0),('p20',0),('p21',0))
     def __init__(self):
+        
 
-        self.supertrend           =  SuperTrend(self.data,period=max(self.params.p0,1),multiplier=max(self.params.p1,1))
+        self.supertrend           =  SuperTrend(self.data,period=max(self.params.p0,1),multiplier=max(self.params.p1/10,1))
         self.superisBull          =  bt.ind.CrossOver(self.data.close,self.supertrend)
         self.isbull               =  False
 
@@ -197,6 +198,8 @@ class MyStratLive(bt.Strategy):
                 log("Closed pos at:"+str(self.data.close[0]))
 
     def next(self):
+        
+        return
         if self.live_data:
             cash,value = self.broker.get_wallet_balance(COIN_REFER)
             coin,val = self.broker.get_wallet_balance(COIN_TARGET)
@@ -206,15 +209,20 @@ class MyStratLive(bt.Strategy):
             coin = 'NA'
 
         for data in self.datas:
-            log('{} - {} | Coin {} | Cash {} | O: {} H: {} L: {} C: {} V:{} EMA:{}'.format(data.datetime.datetime()+datetime.timedelta(minutes=195),
+            log('{} - {} | Coin {} | Cash {} | O: {} H: {} L: {} C: {} V:{} EMA:{}'.format(data.datetime.datetime()+datetime.timedelta(minutes=180),
                 data._name, coin, cash, data.open[0], data.high[0], data.low[0], data.close[0], data.volume[0],
                 self.bull_diff_ema[0]))
             
         #print("pos:"+str(self.position.size))
 
+        if not self.live_data:
+            return
+        
+
         self.ordered = False
         if(not self.superisBull[0] == 0):
-                self.isbull = (self.superisBull[0] == 1)
+            self.isbull = (self.superisBull[0] == 1)
+            log("Switched: "+(" Bull" if self.isbull else " Bear")+" at: "+str(self.data.close[0]))
 
         if(self.isbull):
             bull_isStop             = (self.data.close[0] < self.buyprice - (self.buyprice * self.bull_stop_loss/1000))
@@ -298,12 +306,12 @@ def main():
 
     broker = store.getbroker(broker_mapping=broker_mapping)
     cerebro.setbroker(broker)
-    hist_start_date = datetime.datetime.utcnow() - datetime.timedelta(minutes=15*1000)
+    hist_start_date = datetime.datetime.now() - datetime.timedelta(minutes=5*10000)
     data = store.getdata( dataname='%s/%s' % (COIN_TARGET, COIN_REFER),
         name='%s%s' % (COIN_TARGET, COIN_REFER),
         timeframe=bt.TimeFrame.Minutes,
         fromdate=hist_start_date,
-        compression=15,
+        compression=5,
         ohlcv_limit=100000000,
         drop_newest=True
     )
@@ -315,7 +323,12 @@ def main():
     
     # Include Strategy
     #cerebro.addstrategy(MyStratLive, 356, 454, 190, 79, 187, 178, 192, 13, -37)
-    args = [1,5,19,64,44,10,1,286,181,332,105,256,18,65,35,9,2,310,185,228,94,189]
+    args = [8,56,3,84,62,3,-15,272,164,270,80,160,12,74,35,9,-7,349,185,228,79,175]
+
+    args = [1,50,19,64,44,10,1,286,181,332,105,256,18,65,35,9,2,310,185,228,94,189]
+
+    args = [8,56,3,84,62,3,-15,272,164,270,80,160,12,74,35,9,-7,310,185,228,79,175]
+
     cerebro.addstrategy(MyStratLive,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9]
                                 ,p10=args[10],p11=args[11],p12=args[12],p13=args[13],p14=args[14],p15=args[15],p16=args[16],p17=args[17],p18=args[18],p19=args[19]
                                 ,p20=args[20],p21=args[21])
