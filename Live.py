@@ -9,6 +9,7 @@ import os, playsound, time, backtrader as bt, datetime
 Buytest    = "Buy " + COIN_TARGET
 Selltext   = "Sell "+ COIN_TARGET
 
+Budget = 50
 
 def log(msg):
     print(msg)
@@ -135,7 +136,7 @@ class MyStratLive(bt.Strategy):
         self.bull_tdnine               =  TD9()
         self.bull_td9_high             =  self.params.p5
         self.bull_td9_low              =  self.params.p6
-        self.bull_diff_ema             =  bt.ind.TripleExponentialMovingAverage(period=max(self.params.p7,1))
+        self.bull_diff_ema             =  bt.ind.TripleExponentialMovingAverage(period=max(self.params.p7,10))
         self.bull_avgselldiffactor     =  self.params.p8
         self.bull_avgbuydiffactor      =  self.params.p9
         self.bull_diff_ema_heigh       =  self.bull_diff_ema + (self.bull_diff_ema / self.bull_avgselldiffactor * 10) 
@@ -151,7 +152,7 @@ class MyStratLive(bt.Strategy):
         self.bear_tdnine               =  TD9()
         self.bear_td9_high             =  self.params.p15
         self.bear_td9_low              =  self.params.p16
-        self.bear_diff_ema             =  bt.ind.TripleExponentialMovingAverage(period=max(self.params.p17,1))
+        self.bear_diff_ema             =  bt.ind.movingaverage(period=max(self.params.p17,10))
         self.bear_avgselldiffactor     =  self.params.p18
         self.bear_avgbuydiffactor      =  self.params.p19
         self.bear_diff_ema_heigh       =  self.bear_diff_ema + (self.bear_diff_ema / self.bear_avgselldiffactor * 10) 
@@ -161,13 +162,14 @@ class MyStratLive(bt.Strategy):
         self.bear_takeprofit           =  self.bear_stop_loss * self.bear_RiskReward / 100
         
 
-        self.buyprice             =  -1
-        self.ordered              =  False
+        self.buyprice                  =  -1
+        self.mycoin                    =  -1
+        self.ordered                   =  False
 
 
     def notify_data(self, data, status, *args, **kwargs):
         dn = data._name
-        dt = datetime.datetime.now()
+        dt = datetime.datetime.utcnow() + datetime.timedelta(minutes=180)
         msg= 'Data Status: {}'.format(data._getstatusname(status))
         log(str(dt)+" "+str(dn)+" "+str(msg))
         if data._getstatusname(status) == 'LIVE':
@@ -181,25 +183,28 @@ class MyStratLive(bt.Strategy):
             
         if(isbuy):
             cash,value = self.broker.get_wallet_balance(COIN_REFER)
+            cash = min(Budget,cash)
             size = int(cash-1) / self.data.close[0]
             log("Buy state")
             if(self.live_data and cash > 11.0):
                 self.order=self.buy(size=size)
                 self.buyprice = self.data.close[0]
+                self.mycoin = cash/self.buyprice
                 speak(Buytest)
                 log("Buyed pos at:"+str(self.data.close[0]))
         else:
-            coin,val = self.broker.get_wallet_balance(COIN_TARGET)
+            #coin,val = self.broker.get_wallet_balance(COIN_TARGET)
+            #coin = min(coin*self.buyprice/Budget,coin*self.buyprice)
             log("Sell state")
-            if(self.live_data and (coin * self.data.close[0]) > 11.0):
-                self.order=self.sell(size = coin)
+            if(self.live_data and (self.mycoin * self.data.close[0]) > 11.0):
+                self.order=self.sell(size = self.mycoin)
                 self.buyprice = -1
                 speak(Selltext)
                 log("Closed pos at:"+str(self.data.close[0]))
 
     def next(self):
         
-        return
+        
         if self.live_data:
             cash,value = self.broker.get_wallet_balance(COIN_REFER)
             coin,val = self.broker.get_wallet_balance(COIN_TARGET)
@@ -209,7 +214,7 @@ class MyStratLive(bt.Strategy):
             coin = 'NA'
 
         for data in self.datas:
-            log('{} - {} | Coin {} | Cash {} | O: {} H: {} L: {} C: {} V:{} EMA:{}'.format(data.datetime.datetime()+datetime.timedelta(minutes=180),
+            log('{} - {} | Coin {} | Cash {} | O: {} H: {} L: {} C: {} V:{} EMA:{}'.format(data.datetime.datetime()+datetime.timedelta(minutes=185),
                 data._name, coin, cash, data.open[0], data.high[0], data.low[0], data.close[0], data.volume[0],
                 self.bull_diff_ema[0]))
             
@@ -306,28 +311,24 @@ def main():
 
     broker = store.getbroker(broker_mapping=broker_mapping)
     cerebro.setbroker(broker)
-    hist_start_date = datetime.datetime.now() - datetime.timedelta(minutes=5*10000)
+    hist_start_date = (datetime.datetime.utcnow() + datetime.timedelta(minutes=180)) - datetime.timedelta(minutes=5*10000)
     data = store.getdata( dataname='%s/%s' % (COIN_TARGET, COIN_REFER),
         name='%s%s' % (COIN_TARGET, COIN_REFER),
         timeframe=bt.TimeFrame.Minutes,
         fromdate=hist_start_date,
         compression=5,
-        ohlcv_limit=100000000,
+        ohlcv_limit=5*1000,
         drop_newest=True
     )
 
-    #cerebro.resampledata(data, timeframe=bt.TimeFrame.Minutes, compression=15)
+    #cerebro.resampledata(data, timeframe=bt.TimeFrame.Minutes, compression=5)
 
     # Add the feed
     cerebro.adddata(data)
     
     # Include Strategy
-    #cerebro.addstrategy(MyStratLive, 356, 454, 190, 79, 187, 178, 192, 13, -37)
+    
     args = [8,56,3,84,62,3,-15,272,164,270,80,160,12,74,35,9,-7,349,185,228,79,175]
-
-    args = [1,50,19,64,44,10,1,286,181,332,105,256,18,65,35,9,2,310,185,228,94,189]
-
-    args = [8,56,3,84,62,3,-15,272,164,270,80,160,12,74,35,9,-7,310,185,228,79,175]
 
     cerebro.addstrategy(MyStratLive,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9]
                                 ,p10=args[10],p11=args[11],p12=args[12],p13=args[13],p14=args[14],p15=args[15],p16=args[16],p17=args[17],p18=args[18],p19=args[19]
@@ -349,7 +350,7 @@ def wob():
     try:
         main()
     except KeyboardInterrupt:
-        timer = datetime.datetime.now().strftime("%d-%m-%y %H:%M")
+        timer = (datetime.datetime.utcnow() + datetime.timedelta(minutes=180)).strftime("%d-%m-%y %H:%M")
         log("finished : "+ str(timer))
     except Exception as err:
         log("Finished with error: "+str(err))

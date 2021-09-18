@@ -495,7 +495,7 @@ class MyStratV6(bt.Strategy):
         self.bull_tdnine               =  TD9()
         self.bull_td9_high             =  self.params.p5
         self.bull_td9_low              =  self.params.p6
-        self.bull_diff_ema             =  bt.ind.TripleExponentialMovingAverage(period=max(self.params.p7,1))
+        self.bull_diff_ema             =  bt.ind.DoubleExponentialMovingAverage(period=max(self.params.p7,1))
         self.bull_avgselldiffactor     =  self.params.p8
         self.bull_avgbuydiffactor      =  self.params.p9
         self.bull_diff_ema_heigh       =  self.bull_diff_ema + (self.bull_diff_ema / self.bull_avgselldiffactor * 10) 
@@ -511,7 +511,7 @@ class MyStratV6(bt.Strategy):
         self.bear_tdnine               =  TD9()
         self.bear_td9_high             =  self.params.p15
         self.bear_td9_low              =  self.params.p16
-        self.bear_diff_ema             =  bt.ind.TripleExponentialMovingAverage(period=max(self.params.p17,1))
+        self.bear_diff_ema             =  bt.ind.DoubleExponentialMovingAverage(period=max(self.params.p17,1))
         self.bear_avgselldiffactor     =  self.params.p18
         self.bear_avgbuydiffactor      =  self.params.p19
         self.bear_diff_ema_heigh       =  self.bear_diff_ema + (self.bear_diff_ema / self.bear_avgselldiffactor * 10) 
@@ -770,7 +770,7 @@ def OptRunData(strategy,default_args,scan_range,data):
     for i in range(0,len(default_args)):
         if(default_args[i] == -9999):
             continue
-        cerebro = bt.Cerebro(optreturn=False,maxcpus=8)
+        cerebro = bt.Cerebro(optreturn=False,maxcpus=6)
 
         step    = int(max(abs(default_args[i]/100), 1))
         diff    = step * scan_range
@@ -874,24 +874,26 @@ def getBestParam(start,end,strat,params,paramindex,data,step=1):
 val_list =list()
 if __name__ == '__main__':
 
-    #Dayz = 239
     Dayz = 240
+    #Dayz = 30
 
     #15min
     #data = initData(Dayz,0,Client.KLINE_INTERVAL_15MINUTE,"AVAX",False) 
     # MyStratV6
     #val_list.append(rundata(MyStratV6,optimizeStrat(MyStratV6,[1,50,19,64,44,10,1,286,181,332,105,256,18,65,35,9,2,310,185,228,94,189], 32,data),data,True,False))
 
-    #val_list.append(rundata(MyStratV6,[1,50,19,64,44,10,1,286,181,332,105,256,18,65,35,9,2,310,185,228,94,189],data,False,False))
+    #val_list.append(rundata(MyStratV6,[1,50,19,64,44,10,1,286,181,332,105,256,18,65,35,9,2,310,185,228,94,189],data,True,False))
     
     #5min
-    data = initData(Dayz,0,Client.KLINE_INTERVAL_5MINUTE,"AVAX",False)
+    data = initData(Dayz,0,Client.KLINE_INTERVAL_5MINUTE,"AVAX",True)
 
-    #val_list.append(rundata(MyStratV6,optimizeStrat(MyStratV6,[8,56,3,84,62,3,-15,272,164,270,80,160,12,74,35,9,-7,349,185,228,79,175], 4,data),data,True,False))
-    val_list.append(rundata(MyStratV6,optimizeStrat(MyStratV6,[5,50,7,84,62,3,-15,190,164,262,52,101,15,74,37,9,-7,328,185,270,49,127], 64,data),data,True,False))
+    val_list.append(rundata(MyStratV6,optimizeStrat(MyStratV6,[8,56,3,84,62,3,-15,170,164,270,80,160,12,74,35,9,-7,220,185,228,79,175], 32,data),data,True,False))
 
+    #val_list.append(rundata(MyStratV6,optimizeStrat(MyStratV6,[5,50,12,67,45,4,1,197,158,264,52,101,13,74,37,9,-2,319,185,270,47,161], 64,data),data,True,False))
 
     #val_list.append(rundata(MyStratV6,[8,56,3,84,62,3,-15,272,164,270,80,160,12,74,35,9,-7,349,185,228,79,175],data,False,False))
+
+    #val_list.append(rundata(MyStratV6,[8,56,3,84,62,3,-15,170,164,270,80,160,12,74,35,9,-7,220,185,228,79,175],data,True,False))
 
     ### Production ### 
     #val_list.append(rundata(MyStratV3,[17,66,34,8,3,158,188,1,1,1],data,False,False))
