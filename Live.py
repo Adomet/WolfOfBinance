@@ -9,8 +9,6 @@ import os, playsound, time, backtrader as bt, datetime
 Buytest    = "Buy " + COIN_TARGET
 Selltext   = "Sell "+ COIN_TARGET
 
-Budget = 50
-
 def log(msg):
     print(msg)
     with open('logs.txt','a') as f:
@@ -136,7 +134,7 @@ class MyStratLive(bt.Strategy):
         self.bull_tdnine               =  TD9()
         self.bull_td9_high             =  self.params.p5
         self.bull_td9_low              =  self.params.p6
-        self.bull_diff_ema             =  bt.ind.TripleExponentialMovingAverage(period=max(self.params.p7,10))
+        self.bull_diff_ema             =  bt.ind.ExponentialMovingAverage(period=max(self.params.p7,10))
         self.bull_avgselldiffactor     =  self.params.p8
         self.bull_avgbuydiffactor      =  self.params.p9
         self.bull_diff_ema_heigh       =  self.bull_diff_ema + (self.bull_diff_ema / self.bull_avgselldiffactor * 10) 
@@ -152,7 +150,7 @@ class MyStratLive(bt.Strategy):
         self.bear_tdnine               =  TD9()
         self.bear_td9_high             =  self.params.p15
         self.bear_td9_low              =  self.params.p16
-        self.bear_diff_ema             =  bt.ind.movingaverage(period=max(self.params.p17,10))
+        self.bear_diff_ema             =  bt.ind.ExponentialMovingAverage(period=max(self.params.p17,10))
         self.bear_avgselldiffactor     =  self.params.p18
         self.bear_avgbuydiffactor      =  self.params.p19
         self.bear_diff_ema_heigh       =  self.bear_diff_ema + (self.bear_diff_ema / self.bear_avgselldiffactor * 10) 
@@ -183,21 +181,18 @@ class MyStratLive(bt.Strategy):
             
         if(isbuy):
             cash,value = self.broker.get_wallet_balance(COIN_REFER)
-            cash = min(Budget,cash)
             size = int(cash-1) / self.data.close[0]
             log("Buy state")
             if(self.live_data and cash > 11.0):
                 self.order=self.buy(size=size)
                 self.buyprice = self.data.close[0]
-                self.mycoin = cash/self.buyprice
                 speak(Buytest)
                 log("Buyed pos at:"+str(self.data.close[0]))
         else:
-            #coin,val = self.broker.get_wallet_balance(COIN_TARGET)
-            #coin = min(coin*self.buyprice/Budget,coin*self.buyprice)
+            coin,val = self.broker.get_wallet_balance(COIN_TARGET)
             log("Sell state")
-            if(self.live_data and (self.mycoin * self.data.close[0]) > 11.0):
-                self.order=self.sell(size = self.mycoin)
+            if(self.live_data and (coin * self.data.close[0]) > 11.0):
+                self.order=self.sell(size = coin)
                 self.buyprice = -1
                 speak(Selltext)
                 log("Closed pos at:"+str(self.data.close[0]))
@@ -218,16 +213,18 @@ class MyStratLive(bt.Strategy):
                 data._name, coin, cash, data.open[0], data.high[0], data.low[0], data.close[0], data.volume[0],
                 self.bull_diff_ema[0]))
             
-        #print("pos:"+str(self.position.size))
-
-        if not self.live_data:
-            return
-        
 
         self.ordered = False
         if(not self.superisBull[0] == 0):
             self.isbull = (self.superisBull[0] == 1)
             log("Switched: "+(" Bull" if self.isbull else " Bear")+" at: "+str(self.data.close[0]))
+
+
+        #print("pos:"+str(self.position.size))
+        
+        #if(not self.live_data):
+        #    return
+
 
         if(self.isbull):
             bull_isStop             = (self.data.close[0] < self.buyprice - (self.buyprice * self.bull_stop_loss/1000))
@@ -311,7 +308,7 @@ def main():
 
     broker = store.getbroker(broker_mapping=broker_mapping)
     cerebro.setbroker(broker)
-    hist_start_date = (datetime.datetime.utcnow() + datetime.timedelta(minutes=180)) - datetime.timedelta(minutes=5*10000)
+    hist_start_date = (datetime.datetime.utcnow() + datetime.timedelta(minutes=180)) - datetime.timedelta(minutes=5*1000)
     data = store.getdata( dataname='%s/%s' % (COIN_TARGET, COIN_REFER),
         name='%s%s' % (COIN_TARGET, COIN_REFER),
         timeframe=bt.TimeFrame.Minutes,
@@ -328,7 +325,7 @@ def main():
     
     # Include Strategy
     
-    args = [8,56,3,84,62,3,-15,272,164,270,80,160,12,74,35,9,-7,349,185,228,79,175]
+    args = [10,88,19,84,41,3,-15,34,182,236,90,161,12,77,36,-8,-7,123,191,260,89,174]
 
     cerebro.addstrategy(MyStratLive,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9]
                                 ,p10=args[10],p11=args[11],p12=args[12],p13=args[13],p14=args[14],p15=args[15],p16=args[16],p17=args[17],p18=args[18],p19=args[19]
