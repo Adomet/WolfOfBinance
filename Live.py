@@ -121,20 +121,21 @@ class SuperTrend(bt.Indicator):
 class MyStratLive(bt.Strategy):
     params=(('p0',0),('p1',0),('p2',0),('p3',0),('p4',0),('p5',0),('p6',0),('p7',0),('p8',0),('p9',0),('p10',0),('p11',0),('p12',0),('p13',0),('p14',0),('p15',0),('p16',0),('p17',0),('p18',0),('p19',0),('p20',0),('p21',0))
     def __init__(self):
-        
-
-        self.supertrend           =  SuperTrend(self.data,period=max(self.params.p0,1),multiplier=max(self.params.p1/10,1))
-        self.superisBull          =  bt.ind.CrossOver(self.data.close,self.supertrend)
-        self.isbull               =  False
+        self.params.p0                 =  max(self.params.p0,1)
+        self.supertrend                =  SuperTrend(self.data,period=self.params.p0,multiplier=max(self.params.p1/10,1))
+        self.superisBull               =  bt.ind.CrossOver(self.data.close,self.supertrend)
+        self.tdnine                    =  TD9()
+        self.isbull                    =  False
 
         #BULL
-        self.bull_rsi                  =  bt.ind.RelativeStrengthIndex(self.data, period=max(self.params.p2,3))
+        self.params.p2                 =  max(self.params.p2,2)
+        self.bull_rsi                  =  bt.ind.RelativeStrengthIndex(self.data, period=self.params.p2)
         self.bull_rsi_high             =  self.params.p3
         self.bull_rsi_low              =  self.params.p4
-        self.bull_tdnine               =  TD9()
         self.bull_td9_high             =  self.params.p5
         self.bull_td9_low              =  self.params.p6
-        self.bull_diff_ema             =  bt.ind.ExponentialMovingAverage(period=max(self.params.p7,10))
+        self.params.p7                 =  max(self.params.p7,1)
+        self.bull_diff_ema             =  bt.ind.TripleExponentialMovingAverage(period=self.params.p7)
         self.bull_avgselldiffactor     =  self.params.p8
         self.bull_avgbuydiffactor      =  self.params.p9
         self.bull_diff_ema_heigh       =  self.bull_diff_ema + (self.bull_diff_ema / self.bull_avgselldiffactor * 10) 
@@ -144,13 +145,14 @@ class MyStratLive(bt.Strategy):
         self.bull_takeprofit           =  self.bull_stop_loss * self.bull_RiskReward / 100
 
         #BEAR
-        self.bear_rsi                  =  bt.ind.RelativeStrengthIndex(self.data, period=max(self.params.p12,3))
+        self.params.p12                =  max(self.params.p12,2)
+        self.bear_rsi                  =  bt.ind.RelativeStrengthIndex(self.data, period=self.params.p12)
         self.bear_rsi_high             =  self.params.p13
         self.bear_rsi_low              =  self.params.p14
-        self.bear_tdnine               =  TD9()
         self.bear_td9_high             =  self.params.p15
         self.bear_td9_low              =  self.params.p16
-        self.bear_diff_ema             =  bt.ind.ExponentialMovingAverage(period=max(self.params.p17,10))
+        self.params.p17                =  max(self.params.p17,1)
+        self.bear_diff_ema             =  bt.ind.TripleExponentialMovingAverage(period=self.params.p17)
         self.bear_avgselldiffactor     =  self.params.p18
         self.bear_avgbuydiffactor      =  self.params.p19
         self.bear_diff_ema_heigh       =  self.bear_diff_ema + (self.bear_diff_ema / self.bear_avgselldiffactor * 10) 
@@ -160,9 +162,8 @@ class MyStratLive(bt.Strategy):
         self.bear_takeprofit           =  self.bear_stop_loss * self.bear_RiskReward / 100
         
 
-        self.buyprice                  =  -1
-        self.mycoin                    =  -1
-        self.ordered                   =  False
+        self.buyprice             =  -1
+        self.ordered              =  False
 
 
     def notify_data(self, data, status, *args, **kwargs):
@@ -209,9 +210,8 @@ class MyStratLive(bt.Strategy):
             coin = 'NA'
 
         for data in self.datas:
-            log('{} - {} | Coin {} | Cash {} | O: {} H: {} L: {} C: {} V:{} EMA:{}'.format(data.datetime.datetime()+datetime.timedelta(minutes=185),
-                data._name, coin, cash, data.open[0], data.high[0], data.low[0], data.close[0], data.volume[0],
-                self.bull_diff_ema[0]))
+            log('{} - {} | Coin {} | Cash {} | O: {} H: {} L: {} C: {} V:{} EMA:{}'.format(data.datetime.datetime()+datetime.timedelta(minutes=180+15),
+                data._name, coin, cash, data.open[0], data.high[0], data.low[0], data.close[0], data.volume[0], self.bull_diff_ema[0]))
             
 
         self.ordered = False
@@ -229,12 +229,12 @@ class MyStratLive(bt.Strategy):
         if(self.isbull):
             bull_isStop             = (self.data.close[0] < self.buyprice - (self.buyprice * self.bull_stop_loss/1000))
             bull_isTakeProfit       = (self.data.close[0] > self.buyprice + (self.buyprice * self.bull_takeprofit/1000)) and not self.buyprice ==-1
-            bull_td9selltrigger     = self.bull_tdnine   >=  self.bull_td9_high
-            bull_td9buytrigger      = self.bull_tdnine   <= -self.bull_td9_low
-            bull_rsiselltrigger     = self.bull_rsi      >=  self.bull_rsi_high 
-            bull_rsibuytrigger      = self.bull_rsi      <=  self.bull_rsi_low
-            bull_avgdiffselltrigger = self.data.close[0] >= self.bull_diff_ema_heigh
-            bull_avgdiffbuytrigger  = self.data.close[0] <= self.bull_diff_ema_low
+            bull_td9selltrigger     = self.tdnine         >=  self.bull_td9_high
+            bull_td9buytrigger      = self.tdnine         <= -self.bull_td9_low
+            bull_rsiselltrigger     = self.bull_rsi       >=  self.bull_rsi_high 
+            bull_rsibuytrigger      = self.bull_rsi       <=  self.bull_rsi_low
+            bull_avgdiffselltrigger = self.data.close[0]  >= self.bull_diff_ema_heigh
+            bull_avgdiffbuytrigger  = self.data.close[0]  <= self.bull_diff_ema_low
 
 
             if((bull_td9buytrigger     and bull_rsibuytrigger  and bull_avgdiffbuytrigger )):
@@ -253,12 +253,12 @@ class MyStratLive(bt.Strategy):
         else:
             bear_isStop             = (self.data.close[0] < self.buyprice - (self.buyprice * self.bear_stop_loss/1000))
             bear_isTakeProfit       = (self.data.close[0] > self.buyprice + (self.buyprice * self.bear_takeprofit/1000)) and not self.buyprice ==-1
-            bear_td9selltrigger     = self.bear_tdnine   >=  self.bear_td9_high
-            bear_td9buytrigger      = self.bear_tdnine   <= -self.bear_td9_low
-            bear_rsiselltrigger     = self.bear_rsi      >=  self.bear_rsi_high 
-            bear_rsibuytrigger      = self.bear_rsi      <=  self.bear_rsi_low
-            bear_avgdiffselltrigger = self.data.close[0] >= self.bear_diff_ema_heigh
-            bear_avgdiffbuytrigger  = self.data.close[0] <= self.bear_diff_ema_low
+            bear_td9selltrigger     = self.tdnine         >=  self.bear_td9_high
+            bear_td9buytrigger      = self.tdnine         <= -self.bear_td9_low
+            bear_rsiselltrigger     = self.bear_rsi       >=  self.bear_rsi_high 
+            bear_rsibuytrigger      = self.bear_rsi       <=  self.bear_rsi_low
+            bear_avgdiffselltrigger = self.data.close[0]  >= self.bear_diff_ema_heigh
+            bear_avgdiffbuytrigger  = self.data.close[0]  <= self.bear_diff_ema_low
 
 
             if((bear_td9buytrigger     and bear_rsibuytrigger  and bear_avgdiffbuytrigger )):
@@ -308,13 +308,13 @@ def main():
 
     broker = store.getbroker(broker_mapping=broker_mapping)
     cerebro.setbroker(broker)
-    hist_start_date = (datetime.datetime.utcnow() + datetime.timedelta(minutes=180)) - datetime.timedelta(minutes=5*1000)
+    hist_start_date = (datetime.datetime.utcnow() + datetime.timedelta(minutes=180)) - datetime.timedelta(minutes=15*1000)
     data = store.getdata( dataname='%s/%s' % (COIN_TARGET, COIN_REFER),
         name='%s%s' % (COIN_TARGET, COIN_REFER),
         timeframe=bt.TimeFrame.Minutes,
         fromdate=hist_start_date,
-        compression=5,
-        ohlcv_limit=5*1000,
+        compression=15,
+        ohlcv_limit=15*100000,
         drop_newest=True
     )
 
@@ -325,7 +325,7 @@ def main():
     
     # Include Strategy
     
-    args = [10,88,19,84,41,3,-15,34,182,236,90,161,12,77,36,-8,-7,123,191,260,89,174]
+    args = [9,36,2,91,17,10,1,79,174,268,99,153,14,55,34,7,2,105,218,318,58,216]
 
     cerebro.addstrategy(MyStratLive,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9]
                                 ,p10=args[10],p11=args[11],p12=args[12],p13=args[13],p14=args[14],p15=args[15],p16=args[16],p17=args[17],p18=args[18],p19=args[19]
