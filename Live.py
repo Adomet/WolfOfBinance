@@ -325,7 +325,7 @@ def main():
     
     # Include Strategy
     
-    args = [9,36,2,91,17,10,1,79,174,268,99,153,14,55,34,7,2,104,218,324,57,216]
+    args = [9,36,2,91,17,10,1,79,174,268,99,154,14,55,34,7,2,102,218,306,57,216]
 
     cerebro.addstrategy(MyStratLive,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9]
                                 ,p10=args[10],p11=args[11],p12=args[12],p13=args[13],p14=args[14],p15=args[15],p16=args[16],p17=args[17],p18=args[18],p19=args[19]
