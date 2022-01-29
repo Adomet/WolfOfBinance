@@ -129,7 +129,7 @@ class MyStratLive(bt.Strategy):
 
         #BULL
         self.params.p2                 =  max(self.params.p2,2)
-        self.bull_rsi                  =  bt.ind.RelativeStrengthIndex(self.data, period=self.params.p2)
+        self.bull_rsi                  =  bt.ind.RelativeStrengthIndex(self.data, period=self.params.p2,safediv=True)
         self.bull_rsi_high             =  self.params.p3
         self.bull_rsi_low              =  self.params.p4
         self.bull_td9_high             =  self.params.p5
@@ -146,7 +146,7 @@ class MyStratLive(bt.Strategy):
 
         #BEAR
         self.params.p12                =  max(self.params.p12,2)
-        self.bear_rsi                  =  bt.ind.RelativeStrengthIndex(self.data, period=self.params.p12)
+        self.bear_rsi                  =  bt.ind.RelativeStrengthIndex(self.data, period=self.params.p12,safediv=True)
         self.bear_rsi_high             =  self.params.p13
         self.bear_rsi_low              =  self.params.p14
         self.bear_td9_high             =  self.params.p15
