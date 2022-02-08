@@ -191,10 +191,10 @@ class MyStratLive(bt.Strategy):
                 log("Buyed pos at:"+str(self.data.close[0]))
         else:
             coin,val = self.broker.get_wallet_balance(COIN_TARGET)
+            self.buyprice = -1
             log("Sell state")
             if(self.live_data and (coin * self.data.close[0]) > 11.0):
                 self.order=self.sell(size = coin)
-                self.buyprice = -1
                 speak(Selltext)
                 log("Closed pos at:"+str(self.data.close[0]))
 
