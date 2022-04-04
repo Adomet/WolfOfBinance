@@ -119,12 +119,16 @@ class SuperTrend(bt.Indicator):
 
 ### Trade Strategy ###
 class MyStratLive(bt.Strategy):
-    params=(('p0',0),('p1',0),('p2',0),('p3',0),('p4',0),('p5',0),('p6',0),('p7',0),('p8',0),('p9',0),('p10',0),('p11',0),('p12',0),('p13',0),('p14',0),('p15',0),('p16',0),('p17',0),('p18',0),('p19',0),('p20',0),('p21',0))
+    params=(('p0',0),('p1',0),('p2',0),('p3',0),('p4',0),('p5',0),('p6',0),('p7',0),('p8',0),('p9',0),('p10',0),('p11',0),('p12',0),('p13',0),('p14',0),('p15',0),('p16',0),('p17',0),('p18',0),('p19',0),('p20',0),('p21',0),('p22',0))
     def __init__(self):
         self.params.p0                 =  max(self.params.p0,1)
         self.supertrend                =  SuperTrend(self.data,period=self.params.p0,multiplier=max(self.params.p1/10,1))
         self.superisBull               =  bt.ind.CrossOver(self.data.close,self.supertrend)
         self.tdnine                    =  TD9()
+        self.params.p22                =  max(self.params.p22,1)
+        self.roc                       =  bt.ind.RateOfChange100(self.data,period=13)
+        self.roc_BuyTreshold           =  self.params.p22
+        self.roc_minBuyTreshold        =  self.params.p22
         self.isbull                    =  False
 
         #BULL
@@ -273,6 +277,12 @@ class MyStratLive(bt.Strategy):
             elif(bear_isTakeProfit):
                 log("Bear_TAKE PROFIT")
                 self.orderer(False)
+        
+        ### NEW STUFF ###
+        self.rocbuytrigger          = self.roc >= self.data.close[0] * self.roc_BuyTreshold /1000 and self.isbull
+        if(self.rocbuytrigger):
+            log("ROC_IND BUY")
+            self.orderer(True)
 
 
 
@@ -325,11 +335,11 @@ def main():
     
     # Include Strategy
     
-    args = [2,32,2,91,17,10,1,78,174,268,99,155,14,55,34,7,2,102,218,303,57,216]
+    args = [2,32,2,91,17,10,1,78,174,268,99,155,14,55,34,7,2,102,218,303,57,216,502]
 
     cerebro.addstrategy(MyStratLive,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9]
                                 ,p10=args[10],p11=args[11],p12=args[12],p13=args[13],p14=args[14],p15=args[15],p16=args[16],p17=args[17],p18=args[18],p19=args[19]
-                                ,p20=args[20],p21=args[21])
+                                ,p20=args[20],p21=args[21],p22=args[22])
     # Starting backtrader bot 
     initial_value = cerebro.broker.getvalue()
     log('Starting Portfolio Value: %.2f' % initial_value)
