@@ -128,7 +128,10 @@ class MyStratLive(bt.Strategy):
         self.params.p22                =  max(self.params.p22,1)
         self.roc                       =  bt.ind.RateOfChange100(self.data,period=13)
         self.roc_BuyTreshold           =  self.params.p22
-        self.roc_minBuyTreshold        =  self.params.p22
+        self.adx                       =  bt.ind.AverageDirectionalMovementIndex(self.data,period = 13)
+        self.adxsellTreshold           =  25
+        self.atr                       =  bt.ind.AverageTrueRange(self.data,period = 14)
+
         self.isbull                    =  False
 
         #BULL
@@ -144,9 +147,10 @@ class MyStratLive(bt.Strategy):
         self.bull_avgbuydiffactor      =  self.params.p9
         self.bull_diff_ema_heigh       =  self.bull_diff_ema + (self.bull_diff_ema / self.bull_avgselldiffactor * 10) 
         self.bull_diff_ema_low         =  self.bull_diff_ema - (self.bull_diff_ema / self.bull_avgbuydiffactor  * 10)           
-        self.bull_stop_loss            =  self.params.p10
-        self.bull_RiskReward           =  self.params.p11
-        self.bull_takeprofit           =  self.bull_stop_loss * self.bull_RiskReward / 100
+        self.bull_stop_loss            =  self.params.p10 + self.atr
+        self.bull_takeprofit           =  self.params.p11 / 10
+        
+
 
         #BEAR
         self.params.p12                =  max(self.params.p12,2)
@@ -161,13 +165,11 @@ class MyStratLive(bt.Strategy):
         self.bear_avgbuydiffactor      =  self.params.p19
         self.bear_diff_ema_heigh       =  self.bear_diff_ema + (self.bear_diff_ema / self.bear_avgselldiffactor * 10) 
         self.bear_diff_ema_low         =  self.bear_diff_ema - (self.bear_diff_ema / self.bear_avgbuydiffactor  * 10)           
-        self.bear_stop_loss            =  self.params.p20
-        self.bear_RiskReward           =  self.params.p21
-        self.bear_takeprofit           =  self.bear_stop_loss * self.bear_RiskReward / 100
-        
+        self.bear_stop_loss            =  self.params.p20 + self.atr
+        self.bear_takeprofit           =  self.params.p21 / 10
 
-        self.buyprice             =  -1
-        self.ordered              =  False
+        self.buyprice                  =  -1
+        self.ordered                   =  False
 
 
     def notify_data(self, data, status, *args, **kwargs):
@@ -219,6 +221,8 @@ class MyStratLive(bt.Strategy):
             
 
         self.ordered = False
+        adxselltrigger     = self.adx >= self.adxsellTreshold 
+
         if(not self.superisBull[0] == 0):
             self.isbull = (self.superisBull[0] == 1)
             log("Switched: "+(" Bull" if self.isbull else " Bear")+" at: "+str(self.data.close[0]))
@@ -247,7 +251,7 @@ class MyStratLive(bt.Strategy):
             elif((bull_td9selltrigger  and bull_rsiselltrigger and bull_avgdiffselltrigger)):
                 log("Bull_IND SELL")
                 self.orderer(False)
-            elif(bull_isStop):
+            elif(bull_isStop and adxselltrigger):
                 log("Bull_STOPPED")
                 self.orderer(False)
             elif(bull_isTakeProfit):
@@ -271,7 +275,7 @@ class MyStratLive(bt.Strategy):
             elif((bear_td9selltrigger  and bear_rsiselltrigger and bear_avgdiffselltrigger)):
                 log("Bear_IND SELL")
                 self.orderer(False)
-            elif(bear_isStop):
+            elif(bear_isStop and adxselltrigger):
                 log("Bear_STOPPED")
                 self.orderer(False)
             elif(bear_isTakeProfit):
@@ -335,7 +339,7 @@ def main():
     
     # Include Strategy
     
-    args = [2,28,2,91,17,10,-1,56,213,254,105,154,19,22,34,-1,-1,99,171,342,58,195,502]
+    args = [2,27,2,91,16,10,-1,56,213,254,46,1616,19,22,34,-1,-1,99,171,342,57,1133,502]
 
     cerebro.addstrategy(MyStratLive,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9]
                                 ,p10=args[10],p11=args[11],p12=args[12],p13=args[13],p14=args[14],p15=args[15],p16=args[16],p17=args[17],p18=args[18],p19=args[19]
