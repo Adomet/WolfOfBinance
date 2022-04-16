@@ -119,54 +119,45 @@ class SuperTrend(bt.Indicator):
 
 ### Trade Strategy ###
 class MyStratLive(bt.Strategy):
-    params=(('p0',0),('p1',0),('p2',0),('p3',0),('p4',0),('p5',0),('p6',0),('p7',0),('p8',0),('p9',0),('p10',0),('p11',0),('p12',0),('p13',0),('p14',0),('p15',0),('p16',0),('p17',0),('p18',0),('p19',0),('p20',0),('p21',0),('p22',0))
+    params=(('p0',0),('p1',0),('p2',0),('p3',0),('p4',0),('p5',0),('p6',0),('p7',0),('p8',0),('p9',0),('p10',0),('p11',0),('p12',0),('p13',0),('p14',0),('p15',0),('p16',0),('p17',0))
     def __init__(self):
+        self.plot                      =  True
         self.params.p0                 =  max(self.params.p0,1)
-        self.supertrend                =  SuperTrend(self.data,period=self.params.p0,multiplier=max(self.params.p1/10,1))
-        self.superisBull               =  bt.ind.CrossOver(self.data.close,self.supertrend)
-        self.tdnine                    =  TD9()
-        self.params.p22                =  max(self.params.p22,1)
-        self.roc                       =  bt.ind.RateOfChange100(self.data,period=13)
-        self.roc_BuyTreshold           =  self.params.p22
-        self.adx                       =  bt.ind.AverageDirectionalMovementIndex(self.data,period = 13)
-        self.adxsellTreshold           =  25
-        self.atr                       =  bt.ind.AverageTrueRange(self.data,period = 14)
+        self.supertrend                =  SuperTrend(self.data,period=self.params.p0,multiplier=max(self.params.p1/100,1),plot=self.plot)
+        self.superisBull               =  bt.ind.CrossOver(self.data.close,self.supertrend,plot=False)
+        self.tdnine                    =  TD9(plot=self.plot)
+        self.roc                       =  bt.ind.RateOfChange100(self.data,period=13,plot=self.plot)
+        self.adx                       =  bt.ind.AverageDirectionalMovementIndex(self.data,period = 13,plot=self.plot)
+        self.atr                       =  bt.ind.AverageTrueRange(self.data,period = 13,plot=self.plot)
 
         self.isbull                    =  False
-
         #BULL
-        self.params.p2                 =  max(self.params.p2,2)
-        self.bull_rsi                  =  bt.ind.RelativeStrengthIndex(self.data, period=self.params.p2,safediv=True)
+        self.params.p2                 =  max(self.params.p2,1)
+        self.bull_rsi                  =  bt.ind.RelativeStrengthIndex(self.data, period=self.params.p2,safediv=True,plot=self.plot)
         self.bull_rsi_high             =  self.params.p3
         self.bull_rsi_low              =  self.params.p4
-        self.bull_td9_high             =  self.params.p5
-        self.bull_td9_low              =  self.params.p6
-        self.params.p7                 =  max(self.params.p7,1)
-        self.bull_diff_ema             =  bt.ind.TripleExponentialMovingAverage(period=self.params.p7)
-        self.bull_avgselldiffactor     =  self.params.p8
-        self.bull_avgbuydiffactor      =  self.params.p9
+        self.params.p5                 =  max(self.params.p5,1)
+        self.bull_diff_ema             =  bt.ind.TripleExponentialMovingAverage(period=self.params.p5,plot=self.plot)
+        self.bull_avgselldiffactor     =  self.params.p6
+        self.bull_avgbuydiffactor      =  self.params.p7
         self.bull_diff_ema_heigh       =  self.bull_diff_ema + (self.bull_diff_ema / self.bull_avgselldiffactor * 10) 
-        self.bull_diff_ema_low         =  self.bull_diff_ema - (self.bull_diff_ema / self.bull_avgbuydiffactor  * 10)           
-        self.bull_stop_loss            =  self.params.p10 + self.atr
-        self.bull_takeprofit           =  self.params.p11 / 10
-        
-
+        self.bull_diff_ema_low         =  self.bull_diff_ema - (self.bull_diff_ema / self.bull_avgbuydiffactor  * 10)          
+        self.bull_stop_loss            =  self.params.p8 
+        self.bull_takeprofit           =  self.params.p9 / 10
 
         #BEAR
-        self.params.p12                =  max(self.params.p12,2)
-        self.bear_rsi                  =  bt.ind.RelativeStrengthIndex(self.data, period=self.params.p12,safediv=True)
-        self.bear_rsi_high             =  self.params.p13
-        self.bear_rsi_low              =  self.params.p14
-        self.bear_td9_high             =  self.params.p15
-        self.bear_td9_low              =  self.params.p16
-        self.params.p17                =  max(self.params.p17,1)
-        self.bear_diff_ema             =  bt.ind.TripleExponentialMovingAverage(period=self.params.p17)
-        self.bear_avgselldiffactor     =  self.params.p18
-        self.bear_avgbuydiffactor      =  self.params.p19
+        self.params.p10                =  max(self.params.p10,1)
+        self.bear_rsi                  =  bt.ind.RelativeStrengthIndex(self.data, period=self.params.p10,safediv=True,plot=self.plot)
+        self.bear_rsi_high             =  self.params.p11
+        self.bear_rsi_low              =  self.params.p12
+        self.params.p13                =  max(self.params.p13,1)
+        self.bear_diff_ema             =  bt.ind.TripleExponentialMovingAverage(period=self.params.p13,plot=self.plot)
+        self.bear_avgselldiffactor     =  self.params.p14
+        self.bear_avgbuydiffactor      =  self.params.p15
         self.bear_diff_ema_heigh       =  self.bear_diff_ema + (self.bear_diff_ema / self.bear_avgselldiffactor * 10) 
-        self.bear_diff_ema_low         =  self.bear_diff_ema - (self.bear_diff_ema / self.bear_avgbuydiffactor  * 10)           
-        self.bear_stop_loss            =  self.params.p20 + self.atr
-        self.bear_takeprofit           =  self.params.p21 / 10
+        self.bear_diff_ema_low         =  self.bear_diff_ema - (self.bear_diff_ema / self.bear_avgbuydiffactor  * 10)    
+        self.bear_stop_loss            =  self.params.p16 
+        self.bear_takeprofit           =  self.params.p17 / 10
 
         self.buyprice                  =  -1
         self.ordered                   =  False
@@ -220,8 +211,9 @@ class MyStratLive(bt.Strategy):
                 data._name, coin, cash, data.open[0], data.high[0], data.low[0], data.close[0], data.volume[0], self.bull_diff_ema[0]))
             
 
-        self.ordered = False
-        adxselltrigger     = self.adx >= self.adxsellTreshold 
+        self.ordered                = False
+        adxtrigger                  = self.adx            >=  25
+        td9selltrigger              = self.tdnine         >=  10 
 
         if(not self.superisBull[0] == 0):
             self.isbull = (self.superisBull[0] == 1)
@@ -235,23 +227,20 @@ class MyStratLive(bt.Strategy):
 
 
         if(self.isbull):
-            bull_isStop             = (self.data.close[0] < self.buyprice - (self.buyprice * self.bull_stop_loss/1000))
-            bull_isTakeProfit       = (self.data.close[0] > self.buyprice + (self.buyprice * self.bull_takeprofit/1000)) and not self.buyprice ==-1
-            bull_td9selltrigger     = self.tdnine         >=  self.bull_td9_high
-            bull_td9buytrigger      = self.tdnine         <= -self.bull_td9_low
-            bull_rsiselltrigger     = self.bull_rsi       >=  self.bull_rsi_high 
             bull_rsibuytrigger      = self.bull_rsi       <=  self.bull_rsi_low
-            bull_avgdiffselltrigger = self.data.close[0]  >= self.bull_diff_ema_heigh
-            bull_avgdiffbuytrigger  = self.data.close[0]  <= self.bull_diff_ema_low
+            bull_rsiselltrigger     = self.bull_rsi       >=  self.bull_rsi_high 
+            bull_avgdiffselltrigger = self.data.close[0]  >=  self.bull_diff_ema_heigh
+            bull_avgdiffbuytrigger  = self.data.close[0]  <=  self.bull_diff_ema_low 
+            bull_isStop             = self.data.close[0]  <   self.buyprice - (self.buyprice * self.bull_stop_loss/1000 ) - self.atr / 13
+            bull_isTakeProfit       = self.data.close[0]  >   self.buyprice + (self.buyprice * self.bull_takeprofit/1000) and not self.buyprice ==-1
 
-
-            if((bull_td9buytrigger     and bull_rsibuytrigger  and bull_avgdiffbuytrigger )):
+            if(bull_rsibuytrigger  and bull_avgdiffbuytrigger ):
                 log("Bull_IND BUY")
                 self.orderer(True)
-            elif((bull_td9selltrigger  and bull_rsiselltrigger and bull_avgdiffselltrigger)):
+            elif(bull_rsiselltrigger and bull_avgdiffselltrigger and td9selltrigger):
                 log("Bull_IND SELL")
                 self.orderer(False)
-            elif(bull_isStop and adxselltrigger):
+            elif(bull_isStop and adxtrigger):
                 log("Bull_STOPPED")
                 self.orderer(False)
             elif(bull_isTakeProfit):
@@ -259,34 +248,38 @@ class MyStratLive(bt.Strategy):
                 self.orderer(False)
 
         else:
-            bear_isStop             = (self.data.close[0] < self.buyprice - (self.buyprice * self.bear_stop_loss/1000))
-            bear_isTakeProfit       = (self.data.close[0] > self.buyprice + (self.buyprice * self.bear_takeprofit/1000)) and not self.buyprice ==-1
-            bear_td9selltrigger     = self.tdnine         >=  self.bear_td9_high
-            bear_td9buytrigger      = self.tdnine         <= -self.bear_td9_low
             bear_rsiselltrigger     = self.bear_rsi       >=  self.bear_rsi_high 
             bear_rsibuytrigger      = self.bear_rsi       <=  self.bear_rsi_low
-            bear_avgdiffselltrigger = self.data.close[0]  >= self.bear_diff_ema_heigh
-            bear_avgdiffbuytrigger  = self.data.close[0]  <= self.bear_diff_ema_low
+            bear_avgdiffselltrigger = self.data.close[0]  >=  self.bear_diff_ema_heigh
+            bear_avgdiffbuytrigger  = self.data.close[0]  <=  self.bear_diff_ema_low
+            bear_isStop             = self.data.close[0]  <   self.buyprice - (self.buyprice * self.bear_stop_loss/1000) - self.atr / 13
+            bear_isTakeProfit       = self.data.close[0]  >   self.buyprice + (self.buyprice * self.bear_takeprofit/1000) and not self.buyprice ==-1
 
-
-            if((bear_td9buytrigger     and bear_rsibuytrigger  and bear_avgdiffbuytrigger )):
+            if(bear_rsibuytrigger    and bear_avgdiffbuytrigger ):
                 log("Bear_IND BUY")
                 self.orderer(True)
-            elif((bear_td9selltrigger  and bear_rsiselltrigger and bear_avgdiffselltrigger)):
+            elif(bear_rsiselltrigger and bear_avgdiffselltrigger):
                 log("Bear_IND SELL")
                 self.orderer(False)
-            elif(bear_isStop and adxselltrigger):
+            elif(bear_isStop and adxtrigger):
                 log("Bear_STOPPED")
                 self.orderer(False)
             elif(bear_isTakeProfit):
                 log("Bear_TAKE PROFIT")
                 self.orderer(False)
         
+
         ### NEW STUFF ###
-        self.rocbuytrigger          = self.roc >= self.data.close[0] * self.roc_BuyTreshold /1000 and self.isbull
-        if(self.rocbuytrigger):
+        rocbuytrigger          = self.roc                 >= self.data.close[0] * 502 /1000 and self.isbull
+        hardSTP                = self.data.close[0]       <= self.buyprice - (self.buyprice * 133/1000)      and not self.isbull
+
+        if(rocbuytrigger):
             log("ROC_IND BUY")
             self.orderer(True)
+
+        if(hardSTP):
+            log("HARD_STP SELL")
+            self.orderer(False)
 
 
 
@@ -339,11 +332,10 @@ def main():
     
     # Include Strategy
     
-    args = [2,27,2,91,16,10,-1,56,213,254,46,1616,19,22,34,-1,-1,99,171,342,57,1133,502]
+    args = [2,273,2,91,16,56,213,254,44,1616,19,22,34,99,171,342,57,1133]
 
     cerebro.addstrategy(MyStratLive,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9]
-                                ,p10=args[10],p11=args[11],p12=args[12],p13=args[13],p14=args[14],p15=args[15],p16=args[16],p17=args[17],p18=args[18],p19=args[19]
-                                ,p20=args[20],p21=args[21],p22=args[22])
+                                ,p10=args[10],p11=args[11],p12=args[12],p13=args[13],p14=args[14],p15=args[15],p16=args[16],p17=args[17])
     # Starting backtrader bot 
     initial_value = cerebro.broker.getvalue()
     log('Starting Portfolio Value: %.2f' % initial_value)
