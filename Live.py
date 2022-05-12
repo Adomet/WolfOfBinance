@@ -119,7 +119,7 @@ class SuperTrend(bt.Indicator):
 
 ### Trade Strategy ###
 class MyStratLive(bt.Strategy):
-    params=(('p0',0),('p1',0),('p2',0),('p3',0),('p4',0),('p5',0),('p6',0),('p7',0),('p8',0),('p9',0),('p10',0),('p11',0),('p12',0),('p13',0),('p14',0),('p15',0),('p16',0),('p17',0))
+    params=(('p0',0),('p1',0),('p2',0),('p3',0),('p4',0),('p5',0),('p6',0),('p7',0),('p8',0),('p9',0),('p10',0),('p11',0),('p12',0),('p13',0),('p14',0),('p15',0),('p16',0),('p17',0),('p18',0))
     def __init__(self):
         self.plot                      =  True
         self.params.p0                 =  max(self.params.p0,1)
@@ -142,7 +142,7 @@ class MyStratLive(bt.Strategy):
         self.bull_avgbuydiffactor      =  self.params.p7
         self.bull_diff_ema_heigh       =  self.bull_diff_ema + (self.bull_diff_ema / self.bull_avgselldiffactor * 10) 
         self.bull_diff_ema_low         =  self.bull_diff_ema - (self.bull_diff_ema / self.bull_avgbuydiffactor  * 10)          
-        self.bull_stop_loss            =  self.params.p8 
+        self.bull_stop_loss            =  self.params.p8 / 10
         self.bull_takeprofit           =  self.params.p9 / 10
 
         #BEAR
@@ -156,11 +156,15 @@ class MyStratLive(bt.Strategy):
         self.bear_avgbuydiffactor      =  self.params.p15
         self.bear_diff_ema_heigh       =  self.bear_diff_ema + (self.bear_diff_ema / self.bear_avgselldiffactor * 10) 
         self.bear_diff_ema_low         =  self.bear_diff_ema - (self.bear_diff_ema / self.bear_avgbuydiffactor  * 10)    
-        self.bear_stop_loss            =  self.params.p16 
+        self.bear_stop_loss            =  self.params.p16 / 10
         self.bear_takeprofit           =  self.params.p17 / 10
 
         self.buyprice                  =  -1
         self.ordered                   =  False
+        self.hardSTPDefault            =  self.params.p18
+
+        self.posCandleCountMax         =  880
+        self.posCandleCount            =  0
 
 
     def notify_data(self, data, status, *args, **kwargs):
@@ -270,9 +274,13 @@ class MyStratLive(bt.Strategy):
         
 
         ### NEW STUFF ###
-        rocbuytrigger          = self.roc                 >= self.data.close[0] * 502 /1000 and self.isbull
+        rocbuytrigger          = self.roc                 >= self.data.close[0] * 502 /1000                  and self.isbull
         hardSTP                = self.data.close[0]       <= self.buyprice - (self.buyprice * 133/1000)      and not self.isbull
-
+        TimeOutSTP             = self.posCandleCount      >= self.posCandleCountMax and not self.isbull      and self.data.close[0] > self.buyprice
+        if(TimeOutSTP):
+            log("TimeOutSTP  SELL")
+            self.orderer(False)
+        
         if(rocbuytrigger):
             log("ROC_IND BUY")
             self.orderer(True)
@@ -332,10 +340,10 @@ def main():
     
     # Include Strategy
     
-    args = [2,273,2,91,16,56,213,254,44,1616,19,22,34,99,171,342,57,1133]
+    args = [2,271,2,91,16,56,213,254,440,1616,19,53,34,99,177,342,565,1133,137]
 
     cerebro.addstrategy(MyStratLive,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9]
-                                ,p10=args[10],p11=args[11],p12=args[12],p13=args[13],p14=args[14],p15=args[15],p16=args[16],p17=args[17])
+                                ,p10=args[10],p11=args[11],p12=args[12],p13=args[13],p14=args[14],p15=args[15],p16=args[16],p17=args[17],p18=args[18])
     # Starting backtrader bot 
     initial_value = cerebro.broker.getvalue()
     log('Starting Portfolio Value: %.2f' % initial_value)

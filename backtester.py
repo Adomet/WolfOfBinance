@@ -1,21 +1,11 @@
-from ast import And, arg
-from itertools import count
-from math import fabs, log
-from multiprocessing import set_forkserver_preload
-from operator import isub, itemgetter, truth
-from os import F_OK, name, stat
-from re import S
+from math import sqrt
+from operator import itemgetter
 from binance.client import Client
-from backtrader import broker, cerebro, order,sizers
 import backtrader as bt
-from backtrader.sizers.percents_sizer import PercentSizer
-from backtrader.utils import ordereddefaultdict
-from numpy import busday_count, true_divide
-from pandas import period_range
-from sqlalchemy import false
 import get_data as gd, backtrader as bt, datetime
 import time
 from config import COIN_REFER, COIN_TARGET
+from kelly import Kelly
 
 class TD9(bt.Indicator):
     lines = ('tdnine',)
@@ -341,92 +331,100 @@ class MyStratV2(bt.Strategy):
             #print("roc: " + str(self.data.close[0] * 575 /1000))
             self.orderer(True)
 
+
 class MyStratV3(bt.Strategy):
-    params=(('p0',0),('p1',0),('p2',0),('p3',0),('p4',0),('p5',0),('p6',0),('p7',0),('p8',0),('p9',0),('p10',0),('p11',0))
+    params=(('p0',0),('p1',0),('p2',0),('p3',0),('p4',0),('p5',0),('p6',0),('p7',0),('p8',0),('p9',0),('p10',0),('p11',0),('p12',0),('p13',0),('p14',0),('p15',0),('p16',0),('p17',0),('p18',0),('p19',0),('p20',0),('p21',0),('p22',0))
     def __init__(self):
         self.params.p0                 =  max(self.params.p0,1)
         self.supertrend                =  SuperTrend(self.data,period=self.params.p0,multiplier=max(self.params.p1/10,1))
         self.superisBull               =  bt.ind.CrossOver(self.data.close,self.supertrend)
+        self.tdnine                    =  TD9()
+        self.params.p22                =  max(self.params.p22,1)
+        self.roc                       =  bt.ind.RateOfChange100(self.data,period=13)
+        self.roc_BuyTreshold           =  self.params.p22
+        self.adx                       =  bt.ind.AverageDirectionalMovementIndex(self.data,period = 13)
+        self.adxsellTreshold           =  25
+        self.atr                       =  bt.ind.AverageTrueRange(self.data,period = 14)
+
+
         self.isbull                    =  False
-        
-        ##roc##
-        #self.params.p22                =  max(self.params.p22,1)
-        #self.roc                       =  bt.ind.RateOfChange100(self.data,period=13)
-        #self.roc_BuyTreshold           =  self.params.p22
-        #self.roc_minBuyTreshold        =  self.params.p22
-
         #BULL
-        self.params.p2                 =  max(self.params.p2,1)
-        self.bull_diff_ema             =  bt.ind.TripleExponentialMovingAverage(period=self.params.p2)
+        self.params.p2                 =  max(self.params.p2,2)
+        self.bull_rsi                  =  bt.ind.RelativeStrengthIndex(self.data, period=self.params.p2,safediv=True)
+        self.bull_rsi_high             =  self.params.p3
+        self.bull_rsi_low              =  self.params.p4
+        self.bull_td9_high             =  self.params.p5
+        self.bull_td9_low              =  self.params.p6
+        self.params.p7                 =  max(self.params.p7,1)
+        self.bull_diff_ema             =  bt.ind.TripleExponentialMovingAverage(period=self.params.p7)
+        self.bull_avgselldiffactor     =  self.params.p8
+        self.bull_avgbuydiffactor      =  self.params.p9
+        self.bull_diff_ema_heigh       =  self.bull_diff_ema + (self.bull_diff_ema / self.bull_avgselldiffactor * 10) 
+        self.bull_diff_ema_low         =  self.bull_diff_ema - (self.bull_diff_ema / self.bull_avgbuydiffactor  * 10)           
+        self.bull_stop_loss            =  self.params.p10 + self.atr
+        self.bull_takeprofit           =  self.params.p11 / 10
+        
 
-        self.bullbuystep               =  max(self.params.p3,1)
-        self.bullsellstep              =  max(self.params.p4,1)
-
-        self.bull_stop_loss            =  self.params.p5
-        self.bull_RiskReward           =  self.params.p6
-        self.bull_takeprofit           =  self.bull_stop_loss * self.bull_RiskReward / 100
 
         #BEAR
-        self.params.p7                 =  max(self.params.p7,1)
-        self.bear_diff_ema             =  bt.ind.TripleExponentialMovingAverage(period=self.params.p7)
-        
-        self.bearbuystep               =  max(self.params.p8,1)
-        self.bearsellstep              =  max(self.params.p9,1)
-
-        self.bear_stop_loss            =  self.params.p10
-        self.bear_RiskReward           =  self.params.p11
-        self.bear_takeprofit           =  self.bear_stop_loss * self.bear_RiskReward / 100
+        self.params.p12                =  max(self.params.p12,2)
+        self.bear_rsi                  =  bt.ind.RelativeStrengthIndex(self.data, period=self.params.p12,safediv=True)
+        self.bear_rsi_high             =  self.params.p13
+        self.bear_rsi_low              =  self.params.p14
+        self.bear_td9_high             =  self.params.p15
+        self.bear_td9_low              =  self.params.p16
+        self.params.p17                =  max(self.params.p17,1)
+        self.bear_diff_ema             =  bt.ind.TripleExponentialMovingAverage(period=self.params.p17)
+        self.bear_avgselldiffactor     =  self.params.p18
+        self.bear_avgbuydiffactor      =  self.params.p19
+        self.bear_diff_ema_heigh       =  self.bear_diff_ema + (self.bear_diff_ema / self.bear_avgselldiffactor * 10) 
+        self.bear_diff_ema_low         =  self.bear_diff_ema - (self.bear_diff_ema / self.bear_avgbuydiffactor  * 10)           
+        self.bear_stop_loss            =  self.params.p20 + self.atr
+        self.bear_takeprofit           =  self.params.p21 / 10
 
         self.buyprice                  =  -1
         self.ordered                   =  False
-
-        self.buycount                  = 1
-        self.sellcount                 = 1
-
 
     def orderer(self, isbuy):
         if(self.ordered):
             return
         
-        if(isbuy):
+        if(isbuy and not self.position):
             self.buyprice = self.data.close[0]
-            buysize = int(self.broker.get_cash()*self.buycount*8/128) / self.data.close[0]
+            buysize = int(self.broker.get_cash()*99/100) / self.data.close[0]
             self.buy(size=buysize)
             self.ordered =True
-            self.buycount +=1
-            self.sellcount =0
-            #print("buycount " +str(self.buycount))
 
-        elif(not isbuy):
-            sellsize = int((self.broker.get_value()-self.broker.get_cash()) *self.sellcount*8/128) / self.data.close[0]
+        elif(not isbuy and self.position):
             self.buyprice = -1
-            self.sell(size=sellsize)
+            self.close()
             self.ordered =True
-            self.sellcount +=1
-            self.buycount   =0
-            #print("sellcount " +str(self.sellcount))
         
 
     def next(self):
         self.ordered = False
+        adxselltrigger     = self.adx >= self.adxsellTreshold
+
         if(not self.superisBull[0] == 0):
                 self.isbull = (self.superisBull[0] == 1)
 
         if(self.isbull):
             bull_isStop             = (self.data.close[0] <   self.buyprice - (self.buyprice * self.bull_stop_loss/1000))
             bull_isTakeProfit       = (self.data.close[0] >   self.buyprice + (self.buyprice * self.bull_takeprofit/1000)) and not self.buyprice ==-1
-            
-            bull_buy                = (self.data.close[0] <   self.bull_diff_ema - (self.bull_diff_ema * self.bullbuystep  * self.buycount / 1000))
-            bull_sell               = (self.data.close[0] >   self.bull_diff_ema + (self.bull_diff_ema * self.bullsellstep * self.sellcount / 1000))
+            bull_td9selltrigger     = self.tdnine         >=  self.bull_td9_high
+            bull_td9buytrigger      = self.tdnine         <= -self.bull_td9_low
+            bull_rsiselltrigger     = self.bull_rsi       >=  self.bull_rsi_high 
+            bull_rsibuytrigger      = self.bull_rsi       <=  self.bull_rsi_low
+            bull_avgdiffselltrigger = self.data.close[0]  >=  self.bull_diff_ema_heigh
+            bull_avgdiffbuytrigger  = self.data.close[0]  <=  self.bull_diff_ema_low 
 
 
 
-            if((bull_buy)):
+            if((bull_td9buytrigger     and bull_rsibuytrigger  and bull_avgdiffbuytrigger )):
                 self.orderer(True)
-            elif((bull_sell)):
+            elif((bull_td9selltrigger  and bull_rsiselltrigger and bull_avgdiffselltrigger)):
                 self.orderer(False)
-                
-            elif(bull_isStop):
+            elif(bull_isStop and adxselltrigger):
                 self.orderer(False)
             elif(bull_isTakeProfit):
                 self.orderer(False)
@@ -434,32 +432,291 @@ class MyStratV3(bt.Strategy):
         else:
             bear_isStop             = (self.data.close[0] <   self.buyprice - (self.buyprice * self.bear_stop_loss/1000))
             bear_isTakeProfit       = (self.data.close[0] >   self.buyprice + (self.buyprice * self.bear_takeprofit/1000)) and not self.buyprice ==-1
+            bear_td9selltrigger     = self.tdnine         >=  self.bear_td9_high
+            bear_td9buytrigger      = self.tdnine         <= -self.bear_td9_low
+            bear_rsiselltrigger     = self.bear_rsi       >=  self.bear_rsi_high 
+            bear_rsibuytrigger      = self.bear_rsi       <=  self.bear_rsi_low
+            bear_avgdiffselltrigger = self.data.close[0]  >=  self.bear_diff_ema_heigh
+            bear_avgdiffbuytrigger  = self.data.close[0]  <=  self.bear_diff_ema_low
+            
 
-            bear_buy                = (self.data.close[0] <   self.bear_diff_ema - (self.bear_diff_ema * self.bearbuystep * self.buycount  / 1000))
-            bear_sell               = (self.data.close[0] >   self.bear_diff_ema + (self.bear_diff_ema * self.bearsellstep * self.sellcount / 1000))
 
-            if(bear_buy):
+            if(bear_td9buytrigger     and bear_rsibuytrigger  and bear_avgdiffbuytrigger):
                 self.orderer(True)
-            elif((bear_sell)):
+            elif((bear_td9selltrigger  and bear_rsiselltrigger and bear_avgdiffselltrigger)):
                 self.orderer(False)
-
-            elif(bear_isStop):
+            elif(bear_isStop and adxselltrigger):
                 self.orderer(False)
             elif(bear_isTakeProfit):
                 self.orderer(False)
         
         ### NEW STUFF ###
-        #self.rocbuytrigger          = self.roc >= self.data.close[0] * self.roc_BuyTreshold /1000 and self.isbull
-        #if(self.rocbuytrigger):
-        #    #print("roc: " + str(self.data.close[0] * 575 /1000))
-        #    self.orderer(True)
+        self.rocbuytrigger          = self.roc >= self.data.close[0] * self.roc_BuyTreshold /1000 and self.isbull
 
 
-#### General Functions ####
 
-trans =0
-total_fee =0
+        if(self.rocbuytrigger):
+            #print("roc: " + str(self.data.close[0] * 575 /1000))
+            self.orderer(True)
 
+class MyStratV4(bt.Strategy):
+    params=(('p0',0),('p1',0),('p2',0),('p3',0),('p4',0),('p5',0),('p6',0),('p7',0),('p8',0),('p9',0),('p10',0),('p11',0),('p12',0),('p13',0),('p14',0),('p15',0),('p16',0),('p17',0),('p18',0),('p19',0),('p20',0),('p21',0),('p22',0))
+    def __init__(self):
+        self.params.p0                 =  max(self.params.p0,1)
+        self.supertrend                =  SuperTrend(self.data,period=self.params.p0,multiplier=max(self.params.p1/100,1))
+        self.superisBull               =  bt.ind.CrossOver(self.data.close,self.supertrend)
+        self.tdnine                    =  TD9()
+        self.params.p22                =  max(self.params.p22,1)
+        self.roc                       =  bt.ind.RateOfChange100(self.data,period=13)
+        self.roc_BuyTreshold           =  self.params.p22
+        self.adx                       =  bt.ind.AverageDirectionalMovementIndex(self.data,period = 13)
+        self.adxTreshold               =  25
+        self.atr                       =  bt.ind.AverageTrueRange(self.data,period = 13)
+
+
+        self.isbull                    =  False
+        #BULL
+        self.params.p2                 =  max(self.params.p2,2)
+        self.bull_rsi                  =  bt.ind.RelativeStrengthIndex(self.data, period=self.params.p2,safediv=True)
+        self.bull_rsi_high             =  self.params.p3
+        self.bull_rsi_low              =  self.params.p4
+        self.bull_td9_high             =  self.params.p5
+        self.bull_td9_low              =  self.params.p6
+        self.params.p7                 =  max(self.params.p7,1)
+        self.bull_diff_ema             =  bt.ind.TripleExponentialMovingAverage(period=self.params.p7)
+        self.bull_avgselldiffactor     =  self.params.p8
+        self.bull_avgbuydiffactor      =  self.params.p9
+        self.bull_diff_ema_heigh       =  self.bull_diff_ema + (self.bull_diff_ema / self.bull_avgselldiffactor * 10) 
+        self.bull_diff_ema_low         =  self.bull_diff_ema - (self.bull_diff_ema / self.bull_avgbuydiffactor  * 10)           
+        self.bull_stop_loss            =  self.params.p10 
+        self.bull_takeprofit           =  self.params.p11 / 10
+        
+
+
+        #BEAR
+        self.params.p12                =  max(self.params.p12,2)
+        self.bear_rsi                  =  bt.ind.RelativeStrengthIndex(self.data, period=self.params.p12,safediv=True)
+        self.bear_rsi_high             =  self.params.p13
+        self.bear_rsi_low              =  self.params.p14
+        self.bear_td9_high             =  self.params.p15
+        self.bear_td9_low              =  self.params.p16
+        self.params.p17                =  max(self.params.p17,1)
+        self.bear_diff_ema             =  bt.ind.TripleExponentialMovingAverage(period=self.params.p17)
+        self.bear_avgselldiffactor     =  self.params.p18
+        self.bear_avgbuydiffactor      =  self.params.p19
+        self.bear_diff_ema_heigh       =  self.bear_diff_ema + (self.bear_diff_ema / self.bear_avgselldiffactor * 10) 
+        self.bear_diff_ema_low         =  self.bear_diff_ema - (self.bear_diff_ema / self.bear_avgbuydiffactor  * 10)           
+        self.bear_stop_loss            =  self.params.p20 
+        self.bear_takeprofit           =  self.params.p21 / 10
+
+        self.buyprice                  =  -1
+        self.ordered                   =  False
+
+    def orderer(self, isbuy):
+        if(self.ordered):
+            return
+        
+        if(isbuy and not self.position):
+            self.buyprice = self.data.close[0]
+            buysize = int(self.broker.get_cash()*99/100) / self.data.close[0]
+            self.buy(size=buysize)
+            self.ordered =True
+
+        elif(not isbuy and self.position):
+            self.buyprice = -1
+            self.close()
+            self.ordered =True
+        
+
+    def next(self):
+        self.ordered = False
+        adxtrigger     = self.adx >= self.adxTreshold
+
+        if(not self.superisBull[0] == 0):
+                self.isbull = (self.superisBull[0] == 1)
+
+        if(self.isbull):
+            bull_isStop             = self.data.close[0]  <   self.buyprice - (self.buyprice * self.bull_stop_loss/1000 ) - self.atr / 13
+            bull_isTakeProfit       = self.data.close[0]  >   self.buyprice + (self.buyprice * self.bull_takeprofit/1000) and not self.buyprice ==-1
+            bull_td9selltrigger     = self.tdnine         >=  self.bull_td9_high
+            bull_td9buytrigger      = self.tdnine         <= -self.bull_td9_low
+            bull_rsiselltrigger     = self.bull_rsi       >=  self.bull_rsi_high 
+            bull_rsibuytrigger      = self.bull_rsi       <=  self.bull_rsi_low
+            bull_avgdiffselltrigger = self.data.close[0]  >=  self.bull_diff_ema_heigh
+            bull_avgdiffbuytrigger  = self.data.close[0]  <=  self.bull_diff_ema_low 
+
+
+
+            if((bull_td9buytrigger     and bull_rsibuytrigger  and bull_avgdiffbuytrigger )):
+                self.orderer(True)
+            elif((bull_td9selltrigger  and bull_rsiselltrigger and bull_avgdiffselltrigger)):
+                self.orderer(False)
+            elif(bull_isStop and adxtrigger):
+                self.orderer(False)
+            elif(bull_isTakeProfit):
+                self.orderer(False)
+
+        else:
+            bear_isStop             = self.data.close[0]  <   self.buyprice - (self.buyprice * self.bear_stop_loss/1000) - self.atr / 13
+            bear_isTakeProfit       = self.data.close[0]  >   self.buyprice + (self.buyprice * self.bear_takeprofit/1000) and not self.buyprice ==-1
+            bear_td9selltrigger     = self.tdnine         >=  self.bear_td9_high 
+            bear_td9buytrigger      = self.tdnine         <= -self.bear_td9_low
+            bear_rsiselltrigger     = self.bear_rsi       >=  self.bear_rsi_high 
+            bear_rsibuytrigger      = self.bear_rsi       <=  self.bear_rsi_low
+            bear_avgdiffselltrigger = self.data.close[0]  >=  self.bear_diff_ema_heigh
+            bear_avgdiffbuytrigger  = self.data.close[0]  <=  self.bear_diff_ema_low
+            
+
+
+            if(bear_td9buytrigger     and bear_rsibuytrigger  and bear_avgdiffbuytrigger):
+                self.orderer(True)
+            elif((bear_td9selltrigger  and bear_rsiselltrigger and bear_avgdiffselltrigger)):
+                self.orderer(False)
+            elif(bear_isStop and adxtrigger):
+                self.orderer(False)
+            elif(bear_isTakeProfit):
+                self.orderer(False)
+        
+        ### NEW STUFF ###
+        rocbuytrigger          = self.roc                 >= self.data.close[0] * self.roc_BuyTreshold /1000 and self.isbull
+        hardSTP                = self.data.close[0]       <=  self.buyprice - (self.buyprice * 133/1000)      and not self.isbull 
+
+        if(rocbuytrigger):
+            self.orderer(True)
+
+        if(hardSTP): #133
+            self.orderer(False)
+
+class MyStratV5(bt.Strategy):
+    params=(('p0',0),('p1',0),('p2',0),('p3',0),('p4',0),('p5',0),('p6',0),('p7',0),('p8',0),('p9',0),('p10',0),('p11',0),('p12',0),('p13',0),('p14',0),('p15',0),('p16',0),('p17',0),('p18',0))
+    def __init__(self):
+        self.plot                      =  True
+        self.params.p0                 =  max(self.params.p0,1)
+        self.supertrend                =  SuperTrend(self.data,period=self.params.p0,multiplier=max(self.params.p1/100,1),plot=self.plot)
+        self.superisBull               =  bt.ind.CrossOver(self.data.close,self.supertrend,plot=False)
+        self.tdnine                    =  TD9(plot=self.plot)
+        self.roc                       =  bt.ind.RateOfChange100(self.data,period=13,plot=self.plot)
+        self.adx                       =  bt.ind.AverageDirectionalMovementIndex(self.data,period = 13,plot=self.plot)
+        self.atr                       =  bt.ind.AverageTrueRange(self.data,period = 13,plot=self.plot)
+
+        self.isbull                    =  False
+        #BULL
+        self.params.p2                 =  max(self.params.p2,1)
+        self.bull_rsi                  =  bt.ind.RelativeStrengthIndex(self.data, period=self.params.p2,safediv=True,plot=self.plot)
+        self.bull_rsi_high             =  self.params.p3
+        self.bull_rsi_low              =  self.params.p4
+        self.params.p5                 =  max(self.params.p5,1)
+        self.bull_diff_ema             =  bt.ind.TripleExponentialMovingAverage(period=self.params.p5,plot=self.plot)
+        self.bull_avgselldiffactor     =  self.params.p6
+        self.bull_avgbuydiffactor      =  self.params.p7
+        self.bull_diff_ema_heigh       =  self.bull_diff_ema + (self.bull_diff_ema / self.bull_avgselldiffactor * 10) 
+        self.bull_diff_ema_low         =  self.bull_diff_ema - (self.bull_diff_ema / self.bull_avgbuydiffactor  * 10)          
+        self.bull_stop_loss            =  self.params.p8 / 10
+        self.bull_takeprofit           =  self.params.p9 / 10
+
+        #BEAR
+        self.params.p10                =  max(self.params.p10,1)
+        self.bear_rsi                  =  bt.ind.RelativeStrengthIndex(self.data, period=self.params.p10,safediv=True,plot=self.plot)
+        self.bear_rsi_high             =  self.params.p11
+        self.bear_rsi_low              =  self.params.p12
+        self.params.p13                =  max(self.params.p13,1)
+        self.bear_diff_ema             =  bt.ind.TripleExponentialMovingAverage(period=self.params.p13,plot=self.plot)
+        self.bear_avgselldiffactor     =  self.params.p14
+        self.bear_avgbuydiffactor      =  self.params.p15
+        self.bear_diff_ema_heigh       =  self.bear_diff_ema + (self.bear_diff_ema / self.bear_avgselldiffactor * 10) 
+        self.bear_diff_ema_low         =  self.bear_diff_ema - (self.bear_diff_ema / self.bear_avgbuydiffactor  * 10)    
+        self.bear_stop_loss            =  self.params.p16 / 10
+        self.bear_takeprofit           =  self.params.p17 / 10
+
+        self.buyprice                  =  -1
+        self.ordered                   =  False
+        self.hardSTPDefault            =  self.params.p18
+
+        self.posCandleCountMax         =  880
+        self.posCandleCount            =  0
+        self.buysize                   =  0
+
+    def orderer(self, isbuy):
+        if(self.ordered):
+            return
+        
+        if(isbuy and not self.position):
+            self.buyprice = self.data.close[0]
+            self.buysize = int(self.broker.get_cash()*99/100) / self.data.close[0]
+            self.buy(size=self.buysize)
+            self.ordered =True
+
+        elif(not isbuy and self.position):
+            self.buysize = 0
+            self.buyprice = -1
+            self.close()
+            self.ordered =True
+        
+    def next(self):
+        self.ordered                = False
+        adxtrigger                  = self.adx            >=  25
+        td9selltrigger              = self.tdnine         >=  10
+
+        if(not self.superisBull[0] == 0):
+                self.isbull = (self.superisBull[0] == 1)
+
+        if(self.isbull):
+            bull_rsibuytrigger      = self.bull_rsi       <=  self.bull_rsi_low
+            bull_rsiselltrigger     = self.bull_rsi       >=  self.bull_rsi_high 
+            bull_avgdiffselltrigger = self.data.close[0]  >=  self.bull_diff_ema_heigh
+            bull_avgdiffbuytrigger  = self.data.close[0]  <=  self.bull_diff_ema_low 
+            bull_isStop             = self.data.close[0]  <   self.buyprice - (self.buyprice * self.bull_stop_loss/1000 ) - self.atr / 13
+            bull_isTakeProfit       = self.data.close[0]  >   self.buyprice + (self.buyprice * self.bull_takeprofit/1000) and not self.buyprice ==-1
+
+
+            if(bull_rsibuytrigger    and bull_avgdiffbuytrigger):
+                self.orderer(True)
+            elif(bull_rsiselltrigger and bull_avgdiffselltrigger and td9selltrigger):
+                self.orderer(False)
+            elif(bull_isStop and adxtrigger):
+                self.orderer(False)
+            elif(bull_isTakeProfit):
+                self.orderer(False)
+
+        else:
+            bear_rsiselltrigger     = self.bear_rsi       >=  self.bear_rsi_high 
+            bear_rsibuytrigger      = self.bear_rsi       <=  self.bear_rsi_low
+            bear_avgdiffselltrigger = self.data.close[0]  >=  self.bear_diff_ema_heigh
+            bear_avgdiffbuytrigger  = self.data.close[0]  <=  self.bear_diff_ema_low
+            bear_isStop             = self.data.close[0]  <   self.buyprice - (self.buyprice * self.bear_stop_loss/1000) - self.atr / 13
+            bear_isTakeProfit       = self.data.close[0]  >   self.buyprice + (self.buyprice * self.bear_takeprofit/1000) and not self.buyprice ==-1
+
+            if(bear_rsibuytrigger    and bear_avgdiffbuytrigger ):
+                self.orderer(True)
+            elif(bear_rsiselltrigger and bear_avgdiffselltrigger):
+                self.orderer(False)
+            elif(bear_isStop and adxtrigger):
+                self.orderer(False)
+            elif(bear_isTakeProfit):
+                self.orderer(False)
+        
+        ### NEW STUFF ###
+        rocbuytrigger          = self.roc                 >= self.data.close[0] * 502 /1000 and self.isbull
+        hardSTP                = self.data.close[0]       <= self.buyprice - (self.buyprice * self.hardSTPDefault/1000)        and not self.isbull
+        TimeOutSTP             = self.posCandleCount      >= self.posCandleCountMax and not self.isbull      and self.data.close[0] > self.buyprice
+        
+        if(self.position):
+            self.posCandleCount+=1
+        else:
+            self.posCandleCount = 0
+
+        if(TimeOutSTP):
+            self.orderer(False)
+
+        if(rocbuytrigger):
+            self.orderer(True)
+        
+        if(hardSTP): #133
+            self.orderer(False)
+        
+
+
+############ ANALYZERZ ######################
 def printTradeAnalysis(analyzer):
     '''
     Function to print the Technical Analysis results in a nice format.
@@ -498,6 +755,9 @@ def printSQN(analyzer):
 def printsharperatio(analyzer):
     print('Sharpe: {}'.format(analyzer['sharperatio']))
 
+def printkelly(analyzer):
+    print('Kelly: {}'.format(analyzer['kellyPercent']))
+
 def addParamstoCerebro(cerebro,strategy,args):
 
     cnt = len(args)-1
@@ -505,6 +765,12 @@ def addParamstoCerebro(cerebro,strategy,args):
         cerebro.addstrategy(strategy,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9],p10=args[10],p11=args[11],p12=args[12],p13=args[13],p14=args[14],p15=args[15],p16=args[16],p17=args[17],p18=args[18],p19=args[19],p20=args[20],p21=args[21],p22=args[22])
     elif(cnt==21):
         cerebro.addstrategy(strategy,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9],p10=args[10],p11=args[11],p12=args[12],p13=args[13],p14=args[14],p15=args[15],p16=args[16],p17=args[17],p18=args[18],p19=args[19],p20=args[20],p21=args[21])
+    elif(cnt==23):
+        cerebro.addstrategy(strategy,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9],p10=args[10],p11=args[11],p12=args[12],p13=args[13],p14=args[14],p15=args[15],p16=args[16],p17=args[17],p18=args[18],p19=args[19],p20=args[20],p21=args[21],p22=args[22],p23=args[23])
+    elif(cnt==17):
+        cerebro.addstrategy(strategy,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9],p10=args[10],p11=args[11],p12=args[12],p13=args[13],p14=args[14],p15=args[15],p16=args[16],p17=args[17])
+    elif(cnt==18):
+        cerebro.addstrategy(strategy,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9],p10=args[10],p11=args[11],p12=args[12],p13=args[13],p14=args[14],p15=args[15],p16=args[16],p17=args[17],p18=args[18])
     elif(cnt==11):
         cerebro.addstrategy(strategy,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9],p10=args[10],p11=args[11])
     elif(cnt==6):
@@ -525,6 +791,7 @@ def rundata(strategy, args,data, plot, info):
     cerebro.addanalyzer(bt.analyzers.TradeAnalyzer, _name="ta")
     cerebro.addanalyzer(bt.analyzers.SQN, _name="sqn")
     cerebro.addanalyzer(bt.analyzers.SharpeRatio, _name='sharperatio')
+    cerebro.addanalyzer(Kelly,_name='kellyPercent')
     #cerebro.addsizer(PercentSizer,percents=99)
     broker = cerebro.getbroker()
     broker.setcommission(commission=0.001,name=COIN_TARGET)
@@ -536,7 +803,7 @@ def rundata(strategy, args,data, plot, info):
     for i in range(0, len(args)):
         restr += str(args[i]) + ","
     
-    print(restr+" trans:"+str(trans)+":::"+str(val))
+    print(restr+":::"+str(val))
     #print("Confidance:" + str(conf))
     if(info):
         Market_ratio = (data[0]/data[-len(data)+1])*100
@@ -555,6 +822,7 @@ def rundata(strategy, args,data, plot, info):
         printTradeAnalysis(results[0].analyzers.ta.get_analysis())
         printSQN(results[0].analyzers.sqn.get_analysis())
         printsharperatio(results[0].analyzers.sharperatio.get_analysis())
+        printkelly(results[0].analyzers.kellyPercent.get_analysis())
 
     if(plot):
         #cerebro.run()
@@ -583,6 +851,12 @@ def addParamstoOptCerebro(cerebro,strategy,args):
         cerebro.optstrategy(strategy,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9],p10=args[10],p11=args[11],p12=args[12],p13=args[13],p14=args[14],p15=args[15],p16=args[16],p17=args[17],p18=args[18],p19=args[19],p20=args[20],p21=args[21],p22=args[22])
     elif(cnt==21):
         cerebro.optstrategy(strategy,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9],p10=args[10],p11=args[11],p12=args[12],p13=args[13],p14=args[14],p15=args[15],p16=args[16],p17=args[17],p18=args[18],p19=args[19],p20=args[20],p21=args[21])
+    elif(cnt==23):
+        cerebro.optstrategy(strategy,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9],p10=args[10],p11=args[11],p12=args[12],p13=args[13],p14=args[14],p15=args[15],p16=args[16],p17=args[17],p18=args[18],p19=args[19],p20=args[20],p21=args[21],p22=args[22],p23=args[23])
+    elif(cnt==17):
+        cerebro.optstrategy(strategy,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9],p10=args[10],p11=args[11],p12=args[12],p13=args[13],p14=args[14],p15=args[15],p16=args[16],p17=args[17])
+    elif(cnt==18):
+        cerebro.optstrategy(strategy,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9],p10=args[10],p11=args[11],p12=args[12],p13=args[13],p14=args[14],p15=args[15],p16=args[16],p17=args[17],p18=args[18])
     elif(cnt==11):
         cerebro.optstrategy(strategy,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9],p10=args[10],p11=args[11])
     elif(cnt==6):
@@ -601,9 +875,9 @@ def OptRunData(strategy,default_args,my_scan_range,data,startindex=0,optType='Re
     for i in range(startindex,len(default_args)):
         if(default_args[i] == -9999):
             continue
-        cerebro = bt.Cerebro(optreturn=False,maxcpus=8)
+        cerebro = bt.Cerebro(optreturn=False,maxcpus=6)
 
-        scan_range = min(my_scan_range,abs(default_args[i]))
+        scan_range = min(my_scan_range,default_args[i]*default_args[i])
         step    = int(max(abs(default_args[i]/100), 1))
         diff    = step * scan_range
         heigh   = default_args[i]+diff+step
@@ -697,6 +971,18 @@ def OptRunData(strategy,default_args,my_scan_range,data,startindex=0,optType='Re
                 if(t<len(args)):
                     pars.append(strat.params.p22) 
                     t=t+1
+                if(t<len(args)):
+                    pars.append(strat.params.p23) 
+                    t=t+1
+                if(t<len(args)):
+                    pars.append(strat.params.p24) 
+                    t=t+1
+                if(t<len(args)):
+                    pars.append(strat.params.p25) 
+                    t=t+1
+                if(t<len(args)):
+                    pars.append(strat.params.p26) 
+                    t=t+1
                 
                 val = 0
                 if(optType=='Return'):
@@ -706,12 +992,15 @@ def OptRunData(strategy,default_args,my_scan_range,data,startindex=0,optType='Re
                     analyzer = strat.analyzers.ta.get_analysis()
                     total_closed = analyzer.total.closed
                     total_won = analyzer.won.total
-                    val = (total_won / total_closed) * strat.broker.getvalue()
+                    winrate = (total_won / total_closed)
+                    ret = float(sqrt(strat.broker.getvalue()))
+                    val = winrate * winrate * winrate * ret
 
                 if(optType=='SQN'):
                     analyzer = strat.analyzers.sqn.get_analysis()
                     sqn = analyzer['sqn']
-                    val =sqn * strat.broker.getvalue()
+                    ret = float(sqrt(strat.broker.getvalue()))
+                    val =sqn * sqn * sqn * ret
 
                 if(optType=='Sharpe'):
                     val = strat.analyzers.sharperatio.get_analysis()['sharperatio'] * strat.broker.getvalue()
@@ -723,7 +1012,7 @@ def OptRunData(strategy,default_args,my_scan_range,data,startindex=0,optType='Re
                     winrate = (total_won / total_closed)
                     sqn = strat.analyzers.sqn.get_analysis()['sqn']
                     sharperatio = strat.analyzers.sharperatio.get_analysis()['sharperatio']
-                    ret = strat.broker.getvalue()
+                    ret = float(sqrt(strat.broker.getvalue()))
                     val =  ret * sqn * winrate
 
                 print(val)
@@ -757,33 +1046,6 @@ def initData(traindays,testdays,timeframe,target=COIN_TARGET,refresh=False):
     print("BackTesting Data of: "+ path)
     return data
 
-def TestStratAllCoins(dayz,coins,strat,params):
-    res =0
-    for coin in coins:
-        data = initData(dayz,0,coin,False)
-        res+=rundata(strat,params,data,False,False)
-
-    restr = ""
-    for i in range(0, len(params)):
-        restr += str(params[i]) + ","
-    print("TestStratAllCoins ["+restr+"] ==> "+str(res))
-    return res
-
-def getBestParam(start,end,strat,params,paramindex,data,step=1):
-    print("Getting best param...")
-    maxval=0
-    maxindex=start
-    for i in range(start,end,step):
-        params[paramindex]=i
-        res=rundata(strat,params,data,False,False)
-        if(res>maxval):
-            maxval=res
-            maxindex=i
-    
-    print("Best param : " + str(maxindex) +" ==> "+ str(maxval))
-    return maxindex
-    
-
 
 def SrtDateInit(tf):
     fromdate = datetime.datetime.strptime('2021-01-21', '%Y-%m-%d')
@@ -793,12 +1055,13 @@ def SrtDateInit(tf):
 
 val_list =list()
 if __name__ == '__main__':
-    reget = False
+    reget = True
     
     Delay = 0
-    #Dayz = 666
-    #Dayz = 234
-    Dayz =79
+    Dayz = 666
+    #Dayz = 250
+
+    #Dayz = 60
     data = initData(Dayz,Delay,Client.KLINE_INTERVAL_15MINUTE,"AVAX",reget)
 
     #data = SrtDateInit(reget) #Standart Date to today test
@@ -806,34 +1069,44 @@ if __name__ == '__main__':
     #######  V1 #########
     #val_list.append(rundata(MyStratV1,optimizeStrat(MyStratV1,[2,32,2,91,17,10,1,78,174,268,99,155,14,55,34,7,2,102,218,303,57,216],64,data,17),data,True,False))
     #val_list.append(rundata(MyStratV1,optimizeStrat(MyStratV1,[2,32,2,91,17,10,1,78,174,268,99,155,14,55,34,7,2,102,218,303,57,216],1,data),data,True,False))
+
     #val_list.append(rundata(MyStratV1,[2,32,2,91,17,10,1,78,174,268,99,155,14,55,34,7,2,102,218,303,57,216],data,False,False))#410 day best
 
     #######  V2 #########
-    #val_list.append(rundata(MyStratV2,optimizeStrat(MyStratV2,[2,32,2,91,17,10,1,78,174,268,99,155,14,55,34,7,2,102,218,303,57,216,502]  ,8,data,22),data,True,False))
-    #val_list.append(rundata(MyStratV2,optimizeStrat(MyStratV2,[2,28,2,91,17,10,-1,56,213,254,105,154,19,22,34,-1,-1,99,171,342,58,195,502]  ,32,data,optType='All'),data,True,False))
+    #val_list.append(rundata(MyStratV2,optimizeStrat(MyStratV2,[2,28,2,91,17,10,-1,56,213,254,105,154,19,22,34,-1,-1,99,171,342,58,195,502]  ,8,data,optType='All'),data,True,False))
+    #val_list.append(rundata(MyStratV2,optimizeStrat(MyStratV2,[2,28,2,91,17,10,-1,56,213,254,105,154,19,22,34,-1,-1,99,171,342,58,195,502]  ,8,data,optType='Return'),data,True,False))
 
-
-
-    ##BEST##
-    val_list.append(rundata(MyStratV2,[2,28,2,91,17,10,-1,56,213,254,105,154,19,22,34,-1,-1,99,171,342,58,195,502],data,True,True))
-
-    ## Return BOSS ##
-    #val_list.append(rundata(MyStratV2,[2,32,2,91,17,10,1,78,174,268,99,155,14,55,34,7,2,102,218,303,57,216,502],data,False,True))#420 day best
+    #val_list.append(rundata(MyStratV2,[2,28,2,91,17,10,-1,56,213,254,105,154,19,22,34,-1,-1,99,171,342,58,195,502],data,False,False))
+    
+    #val_list.append(rundata(MyStratV2,[2,32,2,91,17,10,1,78,174,268,99,155,14,55,34,7,2,102,218,303,57,216,502],data,False,False))#420 day best
 
     #######  V3 #########
-    #data = initData(Dayz,Delay,Client.KLINE_INTERVAL_15MINUTE,"AVAX",False)
-    #val_list.append(rundata(MyStratV3,optimizeStrat(MyStratV3,[2,32,100,16,16,99,155,100,16,16,57,216],32,data),data,True,False))
-    #val_list.append(rundata(MyStratV3,[2, 35, 43, 3, 32, 99, 155, 136, 28, 2, 43, 130],data,False,False))
-    #val_list.append(rundata(MyStratV3,[2,32,100,16,16,59,244,100,16,16,59,244],data,False,False))
+    #val_list.append(rundata(MyStratV3,optimizeStrat(MyStratV3,[2,27,2,91,16,9,-1,56,219,254,44,1616,19,22,34,-1,-1,99,171,342,57,1133,502] ,16,data,optType='All'),data,True,True))
+
+    #val_list.append(rundata(MyStratV3,[2,27,2,91,16,10,-1,56,213,254,46,1616,19,22,34,-1,-1,99,171,342,57,1133,502],data,False,False))
 
     #######  V4 #########
-    #val_list.append(rundata(MyStratV2,optimizeStrat(MyStratV2,[2,32,2,91,17,10,1,78,174,268,99,155,14,55,34,7,2,102,218,303,57,216,502]  ,8,data,22),data,True,False))
-    #val_list.append(rundata(MyStratV2,optimizeStrat(MyStratV2,[2,32,2,91,17,10,1,78,174,268,99,155,14,55,34,7,2,102,218,303,57,216,502]  ,8,data),data,True,False))
-    #val_list.append(rundata(MyStratV2,[3,55,4,96,31,4,-1,91,157,226,118,172,17,22,34,9,0,77,226,357,59,197,472],data,False,False))
-    ##BEST##
-    #val_list.append(rundata(MyStratV2,[2,32,2,91,17,10,1,78,174,268,99,155,14,55,34,7,2,102,218,303,57,216,502],data,True,False))#250 day best
+    #val_list.append(rundata(MyStratV4,optimizeStrat(MyStratV4,[2,273,2,91,16,9,-1,56,213,254,44,1616,19,22,34,-1,-1,99,171,342,57,1133,502] ,16,data,optType='All'),data,True,True))
+    
+    #val_list.append(rundata(MyStratV4,[2,273,2,91,16,10,-1,56,213,254,44,1616,19,22,34,-1,-1,99,171,342,57,1133,502],data,False,False))
+
+    #######  V5 #########
+    #val_list.append(rundata(MyStratV5,optimizeStrat(MyStratV5,[2,271,2,91,16,56,213,254,440,1616,19,53,34,99,177,342,565,1133,137],2,data,optType='All'),data,True,True))
+
+    val_list.append(rundata(MyStratV5,[2,271,2,91,16,56,213,254,440,1616,19,53,34,99,177,342,565,1133,137],data,False,True))
+
+
+
+    ### BEST ###
+    #val_list.append(rundata(MyStratV5,[2,271,2,91,16,56,213,254,440,1616,19,53,34,99,177,342,565,1133,137],data,False,True))
+
+    #val_list.append(rundata(MyStratV5,[2,271,2,91,16,56,213,254,440,1616,19,51,34,99,171,342,565,1133,133],data,False,True))
 
     ### todo ###
+    # Hard stp porblem
+    # dont buy after hard stop or someting
+    # ADX to start ?
+    # PVT RSI lama olayı
     # Trailing stop loss
     # Sell price when buy
     # Trading Rush MACD strat to code MACD + 200 EMA pullback stoploss ez %62 percent try
@@ -855,15 +1128,8 @@ if __name__ == '__main__':
     # if we are not going up we are going down
     #### Notes #####
     #vwap hullema
-    #bar içi olaylara görede reaksiyon verme
-    #monte carlo similasyonu
-
-    ############# 30 m ##############################
-
-    #data = initData(Dayz,Delay,Client.KLINE_INTERVAL_30MINUTE,"AVAX",False)
-    #val_list.append(rundata(MyStratV2,optimizeStrat(MyStratV2,[6,42,5,78,20,8,2,39,180,270,91,151,14,37,35,7,1,49,194,348,50,214,502],32,data),data,True,False))
-    #val_list.append(rundata(MyStratV2,[6,42,5,78,20,8,2,39,180,270,91,151,14,37,35,7,1,49,194,348,50,214,502],data,True,False))#250 day best
-    #val_list.append(rundata(MyStratV2,[6,42,5,92,20,6,2,39,192,270,91,151,14,64,35,7,1,49,194,348,50,214,552],data,True,False))#250 day best
+    #intar bar trading ?
+    #monte carlo simulation
 
 
     print("Best value:"+str(max(val_list)))
