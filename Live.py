@@ -1,12 +1,10 @@
-from multiprocessing import log_to_stderr
-from backtrader.dataseries import TimeFrame
 from gtts import gTTS
 from ccxtbt import CCXTStore
-from config import BINANCE, ENV, PRODUCTION, COIN_TARGET, COIN_REFER, DEBUG
+from config import BINANCE, COIN_TARGET, COIN_REFER, DEBUG
 import os, playsound, time, backtrader as bt, datetime
 
 ### Text To Speach Stuff ###
-Buytest    = "Buy " + COIN_TARGET
+Buytext    = "Buy " + COIN_TARGET
 Selltext   = "Sell "+ COIN_TARGET
 
 def log(msg):
@@ -163,7 +161,7 @@ class MyStratLive(bt.Strategy):
         self.ordered                   =  False
         self.hardSTPDefault            =  self.params.p18
 
-        self.posCandleCountMax         =  880
+        self.posCandleCountMax         =  896
         self.posCandleCount            =  0
 
 
@@ -188,8 +186,8 @@ class MyStratLive(bt.Strategy):
             if(self.live_data and cash > 11.0):
                 self.order=self.buy(size=size)
                 self.buyprice = self.data.close[0]
-                speak(Buytest)
-                log("Buyed pos at:"+str(self.data.close[0]))
+                speak(Buytext)
+                log("Buyed price at:"+str(self.data.close[0])+ " || Predicted sell price at:"+ str(self.buyprice + (self.buyprice * self.bull_takeprofit/1000)))
         else:
             coin,val = self.broker.get_wallet_balance(COIN_TARGET)
             self.buyprice = -1
@@ -197,7 +195,8 @@ class MyStratLive(bt.Strategy):
             if(self.live_data and (coin * self.data.close[0]) > 11.0):
                 self.order=self.sell(size = coin)
                 speak(Selltext)
-                log("Closed pos at:"+str(self.data.close[0]))
+                log("Closed price at:"+str(self.data.close[0]))
+
 
     def next(self):
         
@@ -211,13 +210,13 @@ class MyStratLive(bt.Strategy):
             coin = 'NA'
 
         for data in self.datas:
-            log('{} - {} | Coin {} | Cash {} | O: {} H: {} L: {} C: {} V:{} EMA:{}'.format(data.datetime.datetime()+datetime.timedelta(minutes=180+15),
+            log('{} - {} | Coin {} | Cash {} | O: {} H: {} L: {} C: {} V:{} TEMA:{}'.format(data.datetime.datetime()+datetime.timedelta(minutes=180+15),
                 data._name, coin, cash, data.open[0], data.high[0], data.low[0], data.close[0], data.volume[0], self.bull_diff_ema[0]))
             
 
         self.ordered                = False
-        adxtrigger                  = self.adx            >=  25
-        td9selltrigger              = self.tdnine         >=  10 
+        adxtrigger                  = self.adx            >=  26
+        td9selltrigger              = self.tdnine         >=  10
 
         if(not self.superisBull[0] == 0):
             self.isbull = (self.superisBull[0] == 1)
@@ -274,9 +273,15 @@ class MyStratLive(bt.Strategy):
         
 
         ### NEW STUFF ###
-        rocbuytrigger          = self.roc                 >= self.data.close[0] * 502 /1000                  and self.isbull
-        hardSTP                = self.data.close[0]       <= self.buyprice - (self.buyprice * 133/1000)      and not self.isbull
-        TimeOutSTP             = self.posCandleCount      >= self.posCandleCountMax and not self.isbull      and self.data.close[0] > self.buyprice
+        rocbuytrigger    = self.roc              >= self.data.close[0] * 502 /1000                               and self.isbull
+        hardSTP          = self.data.close[0]    <= self.buyprice - (self.buyprice * self.hardSTPDefault/1000)   and not self.isbull
+        TimeOutSTP       = self.posCandleCount   >= self.posCandleCountMax and not self.isbull                   and self.data.close[0] > self.buyprice
+        
+        if(not self.buyprice == -1):
+            self.posCandleCount+=1
+        else:
+            self.posCandleCount = 0
+        
         if(TimeOutSTP):
             log("TimeOutSTP  SELL")
             self.orderer(False)
