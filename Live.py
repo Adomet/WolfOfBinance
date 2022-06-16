@@ -187,7 +187,7 @@ class MyStratLive(bt.Strategy):
                 self.order=self.buy(size=size)
                 self.buyprice = self.data.close[0]
                 speak(Buytext)
-                log("Buyed price at:"+str(self.data.close[0])+ " || Predicted sell price at:"+ str(self.buyprice + (self.buyprice * self.bull_takeprofit/1000)))
+                log("Buyed price at:"+str(self.data.close[0])+" || Stoploss price at:"+ str(self.buyprice - (self.buyprice * self.bear_stop_loss/1000)) + " || TP_Sell price at:"+ str(self.buyprice + (self.buyprice * self.bull_takeprofit/1000)))
         else:
             coin,val = self.broker.get_wallet_balance(COIN_TARGET)
             self.buyprice = -1
