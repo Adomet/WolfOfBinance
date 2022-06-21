@@ -178,7 +178,8 @@ class MyStratLive(bt.Strategy):
     def orderer(self, isbuy):
         if(self.ordered):
             return
-            
+
+        self.ordered =True    
         if(isbuy):
             cash,value = self.broker.get_wallet_balance(COIN_REFER)
             size = int(cash-1) / self.data.close[0]
