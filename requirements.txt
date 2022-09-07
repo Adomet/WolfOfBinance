@@ -1,4 +1,4 @@
-git+git://github.com/Adomet/bt-ccxt-store@master#bt-ccxt-store
+tzlocal==2.1
 backtrader==1.9.76.123
 matplotlib==3.2.2
 cryptocmd==0.6.0
@@ -8,7 +8,6 @@ PyYAML==5.3.1
 requests==2.21.0
 python-binance==1.0.10
 binance==0.3
-binance-client==1.0.0
-ccxt==1.50.37
+ccxt
 gTTS==2.2.2
 playsound==1.2.2

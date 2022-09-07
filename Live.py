@@ -159,11 +159,12 @@ class MyStratLive(bt.Strategy):
 
         self.buyprice                  =  -1
         self.ordered                   =  False
-        self.hardSTPDefault            =  self.params.p18
+        self.hardSTPDefault            =  137
+        self.timeProfitRetioDropRate   =  self.params.p18/1000000
 
         self.posCandleCountMax         =  896
         self.posCandleCount            =  0
-
+        self.buysize                   =  0
 
     def notify_data(self, data, status, *args, **kwargs):
         dn = data._name
@@ -274,9 +275,10 @@ class MyStratLive(bt.Strategy):
         
 
         ### NEW STUFF ###
-        rocbuytrigger    = self.roc              >= self.data.close[0] * 502 /1000                               and self.isbull
-        hardSTP          = self.data.close[0]    <= self.buyprice - (self.buyprice * self.hardSTPDefault/1000)   and not self.isbull
-        TimeOutSTP       = self.posCandleCount   >= self.posCandleCountMax and not self.isbull                   and self.data.close[0] > self.buyprice
+        rocbuytrigger       = self.roc              >= self.data.close[0] * 502 /1000                               and self.isbull
+        hardSTP             = self.data.close[0]    <= self.buyprice - (self.buyprice * self.hardSTPDefault/1000)   and not self.isbull
+        TimeOutSTP          = self.posCandleCount   >= self.posCandleCountMax and not self.isbull                   and self.data.close[0] > self.buyprice
+        TimeProfitRatioSTP  = (self.data.close[0] - self.buyprice)/self.buyprice >= ((self.bull_takeprofit/1000) - (self.timeProfitRetioDropRate * (self.posCandleCount))) and not self.isbull
         
         if(not self.buyprice == -1):
             self.posCandleCount+=1
@@ -293,6 +295,10 @@ class MyStratLive(bt.Strategy):
 
         if(hardSTP):
             log("HARD_STP SELL")
+            self.orderer(False)
+        
+        if(TimeProfitRatioSTP):
+            log("Time/Profit SELL")
             self.orderer(False)
 
 
@@ -346,7 +352,7 @@ def main():
     
     # Include Strategy
     
-    args = [2,271,2,91,16,56,213,254,440,1616,19,53,34,99,177,342,565,1133,137]
+    args = [2,271,2,91,16,56,213,254,436,1616,19,53,34,101,175,345,565,1166,281]
 
     cerebro.addstrategy(MyStratLive,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9]
                                 ,p10=args[10],p11=args[11],p12=args[12],p13=args[13],p14=args[14],p15=args[15],p16=args[16],p17=args[17],p18=args[18])
