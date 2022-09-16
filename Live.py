@@ -132,8 +132,8 @@ class MyStratLive(bt.Strategy):
         #BULL
         self.params.p2                 =  max(self.params.p2,1)
         self.bull_rsi                  =  bt.ind.RelativeStrengthIndex(self.data, period=self.params.p2,safediv=True,plot=self.plot)
-        self.bull_rsi_high             =  self.params.p3
-        self.bull_rsi_low              =  self.params.p4
+        self.bull_rsi_high             =  self.params.p3 / 10
+        self.bull_rsi_low              =  self.params.p4 / 10
         self.params.p5                 =  max(self.params.p5,1)
         self.bull_diff_ema             =  bt.ind.TripleExponentialMovingAverage(period=self.params.p5,plot=self.plot)
         self.bull_avgselldiffactor     =  self.params.p6
@@ -146,8 +146,8 @@ class MyStratLive(bt.Strategy):
         #BEAR
         self.params.p10                =  max(self.params.p10,1)
         self.bear_rsi                  =  bt.ind.RelativeStrengthIndex(self.data, period=self.params.p10,safediv=True,plot=self.plot)
-        self.bear_rsi_high             =  self.params.p11
-        self.bear_rsi_low              =  self.params.p12
+        self.bear_rsi_high             =  self.params.p11 / 10
+        self.bear_rsi_low              =  self.params.p12 / 10
         self.params.p13                =  max(self.params.p13,1)
         self.bear_diff_ema             =  bt.ind.TripleExponentialMovingAverage(period=self.params.p13,plot=self.plot)
         self.bear_avgselldiffactor     =  self.params.p14
@@ -352,7 +352,7 @@ def main():
     
     # Include Strategy
     
-    args = [2,271,2,91,16,56,213,254,436,1616,19,53,34,101,175,345,565,1166,281]
+    args = [2,271,2,910,160,56,213,254,436,1617,19,530,346,101,175,340,568,1169,281]
 
     cerebro.addstrategy(MyStratLive,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9]
                                 ,p10=args[10],p11=args[11],p12=args[12],p13=args[13],p14=args[14],p15=args[15],p16=args[16],p17=args[17],p18=args[18])
