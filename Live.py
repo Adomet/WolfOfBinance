@@ -165,6 +165,7 @@ class MyStratLive(bt.Strategy):
         self.posCandleCountMax         =  896
         self.posCandleCount            =  0
         self.buysize                   =  0
+        self.isbuyready                =  False
 
     def notify_data(self, data, status, *args, **kwargs):
         dn = data._name
@@ -219,6 +220,7 @@ class MyStratLive(bt.Strategy):
         self.ordered                = False
         adxtrigger                  = self.adx            >=  26
         td9selltrigger              = self.tdnine         >=  10
+        candleDiffbuytrigger        = self.data.close[0]  >=  self.data.open[0] - (50 / 1000 * self.data.open[0])
 
         if(not self.superisBull[0] == 0):
             self.isbull = (self.superisBull[0] == 1)
@@ -240,8 +242,7 @@ class MyStratLive(bt.Strategy):
             bull_isTakeProfit       = self.data.close[0]  >   self.buyprice + (self.buyprice * self.bull_takeprofit/1000) and not self.buyprice ==-1
 
             if(bull_rsibuytrigger  and bull_avgdiffbuytrigger ):
-                log("Bull_IND BUY")
-                self.orderer(True)
+                self.isbuyready = True
             elif(bull_rsiselltrigger and bull_avgdiffselltrigger and td9selltrigger):
                 log("Bull_IND SELL")
                 self.orderer(False)
@@ -261,18 +262,22 @@ class MyStratLive(bt.Strategy):
             bear_isTakeProfit       = self.data.close[0]  >   self.buyprice + (self.buyprice * self.bear_takeprofit/1000) and not self.buyprice ==-1
 
             if(bear_rsibuytrigger    and bear_avgdiffbuytrigger ):
-                log("Bear_IND BUY")
-                self.orderer(True)
+                self.isbuyready = True
             elif(bear_rsiselltrigger and bear_avgdiffselltrigger):
+                self.orderer(False)
                 log("Bear_IND SELL")
-                self.orderer(False)
             elif(bear_isStop and adxtrigger):
+                self.orderer(False)
                 log("Bear_STOPPED")
-                self.orderer(False)
             elif(bear_isTakeProfit):
-                log("Bear_TAKE PROFIT")
                 self.orderer(False)
-        
+                log("Bear_TAKE PROFIT")
+
+
+        if(candleDiffbuytrigger and self.isbuyready):
+            self.isbuyready=False
+            self.orderer(True)
+            log("CANDLE_TRIG BUY")        
 
         ### NEW STUFF ###
         rocbuytrigger       = self.roc              >= self.data.close[0] * 502 /1000                               and self.isbull
@@ -286,20 +291,20 @@ class MyStratLive(bt.Strategy):
             self.posCandleCount = 0
         
         if(TimeOutSTP):
-            log("TimeOutSTP  SELL")
             self.orderer(False)
+            log("TimeOutSTP  SELL")
         
         if(rocbuytrigger):
-            log("ROC_IND BUY")
             self.orderer(True)
+            log("ROC_IND BUY")
 
         if(hardSTP):
-            log("HARD_STP SELL")
             self.orderer(False)
+            log("HARD_STP SELL")
         
         if(TimeProfitRatioSTP):
-            log("Time/Profit SELL")
             self.orderer(False)
+            log("Time/Profit SELL")
 
 
 
