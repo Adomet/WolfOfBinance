@@ -159,7 +159,7 @@ class MyStratLive(bt.Strategy):
 
         self.buyprice                  =  -1
         self.ordered                   =  False
-        self.hardSTPDefault            =  137
+        self.hardSTPDefault            =  149
         self.timeProfitRetioDropRate   =  self.params.p18/1000000
 
         self.posCandleCountMax         =  896
