@@ -162,7 +162,6 @@ class MyStratLive(bt.Strategy):
         self.hardSTPDefault            =  149
         self.timeProfitRetioDropRate   =  self.params.p18/1000000
 
-        self.posCandleCountMax         =  896
         self.posCandleCount            =  0
         self.buysize                   =  0
         self.isbuyready                =  False
@@ -172,6 +171,7 @@ class MyStratLive(bt.Strategy):
         dt = datetime.datetime.utcnow() + datetime.timedelta(minutes=180)
         msg= 'Data Status: {}'.format(data._getstatusname(status))
         log(str(dt)+" "+str(dn)+" "+str(msg))
+        self.isbuyready = False
         if data._getstatusname(status) == 'LIVE':
             self.live_data = True
         else:
@@ -220,7 +220,7 @@ class MyStratLive(bt.Strategy):
         self.ordered                = False
         adxtrigger                  = self.adx            >=  26
         td9selltrigger              = self.tdnine         >=  10
-        candleDiffbuytrigger        = self.data.close[0]  >=  self.data.open[0] - (50 / 1000 * self.data.open[0])
+        candleDiffbuytrigger        = self.data.close[0]  >=  self.data.open[0] - (59 / 1000 * self.data.open[0])
 
         if(not self.superisBull[0] == 0):
             self.isbull = (self.superisBull[0] == 1)
@@ -282,7 +282,6 @@ class MyStratLive(bt.Strategy):
         ### NEW STUFF ###
         rocbuytrigger       = self.roc              >= self.data.close[0] * 502 /1000                               and self.isbull
         hardSTP             = self.data.close[0]    <= self.buyprice - (self.buyprice * self.hardSTPDefault/1000)   and not self.isbull
-        TimeOutSTP          = self.posCandleCount   >= self.posCandleCountMax and not self.isbull                   and self.data.close[0] > self.buyprice
         TimeProfitRatioSTP  = (self.data.close[0] - self.buyprice)/self.buyprice >= ((self.bull_takeprofit/1000) - (self.timeProfitRetioDropRate * (self.posCandleCount))) and not self.isbull
         
         if(not self.buyprice == -1):
@@ -290,15 +289,11 @@ class MyStratLive(bt.Strategy):
         else:
             self.posCandleCount = 0
         
-        if(TimeOutSTP):
-            self.orderer(False)
-            log("TimeOutSTP  SELL")
-        
         if(rocbuytrigger):
             self.orderer(True)
             log("ROC_IND BUY")
 
-        if(hardSTP):
+        if(hardSTP and adxtrigger):
             self.orderer(False)
             log("HARD_STP SELL")
         
