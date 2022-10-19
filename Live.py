@@ -118,14 +118,12 @@ class SuperTrend(bt.Indicator):
 ### Trade Strategy ###
 class MyStratLive(bt.Strategy):
     params=(('p0',0),('p1',0),('p2',0),('p3',0),('p4',0),('p5',0),('p6',0),('p7',0),('p8',0),('p9',0),('p10',0),('p11',0),('p12',0),('p13',0),('p14',0),('p15',0),('p16',0),('p17',0),('p18',0),('p19',0),('p20',0))
-
     def __init__(self):
         self.plot                      =  False
         self.params.p0                 =  max(self.params.p0,1)
         self.supertrend                =  SuperTrend(self.data,period=self.params.p0,multiplier=max(self.params.p1/100,1),plot=True)
         self.superisBull               =  bt.ind.CrossOver(self.data.close,self.supertrend,plot=False)
         self.tdnine                    =  TD9(plot=self.plot)
-        
         self.adx                       =  bt.ind.AverageDirectionalMovementIndex(self.data,period = 13,plot=self.plot)
         self.atr                       =  bt.ind.AverageTrueRange(self.data,period=9,plot=self.plot)
 
@@ -157,7 +155,6 @@ class MyStratLive(bt.Strategy):
         self.hardSTPDefault            =  self.params.p18
         self.buyprice                  =  -1
         self.ordered                   =  False
-
 
         self.posCandleCount            =  0
         self.buysize                   =  0
@@ -237,7 +234,7 @@ class MyStratLive(bt.Strategy):
             bull_rsiselltrigger     = self.bull_rsi        >=  self.bull_rsi_high 
             bull_avgdiffselltrigger = self.data.close[0]   >=  self.bull_diff_ema_heigh
             bull_avgdiffbuytrigger  = self.data.close[0]   <=  self.bull_diff_ema_low 
-            bull_isTakeProfit       = self.data.close[0]   >   self.buyprice + (self.buyprice * self.bull_takeprofit) and not self.buyprice == -1
+            bull_isTakeProfit       = self.data.close[0]   >=  self.buyprice + (self.buyprice * self.bull_takeprofit) and not self.buyprice == -1
 
             if(bull_rsibuytrigger  and bull_avgdiffbuytrigger ):
                 self.isbuyready = True
@@ -256,7 +253,7 @@ class MyStratLive(bt.Strategy):
             bear_rsibuytrigger      = self.bear_rsi        <=  self.bear_rsi_low
             bear_avgdiffselltrigger = self.data.close[0]   >=  self.bear_diff_ema_heigh
             bear_avgdiffbuytrigger  = self.data.close[0]   <=  self.bear_diff_ema_low
-            bear_isTakeProfit       = self.data.close[0]   >   self.buyprice + (self.buyprice * self.bear_takeprofit) and not self.buyprice == -1
+            bear_isTakeProfit       = self.data.close[0]   >=  self.buyprice + (self.buyprice * self.bear_takeprofit) and not self.buyprice == -1
 
             if(bear_rsibuytrigger    and bear_avgdiffbuytrigger ):
                 self.isbuyready = True
@@ -283,17 +280,17 @@ class MyStratLive(bt.Strategy):
 
         ### NEW STUFF ###
         TimeProfitRatioSTP          = (self.data.close[0] - self.buyprice)/self.buyprice >= ((self.bull_takeprofit) - (self.timeProfitRetioDropRate * (self.posCandleCount))) and not self.isbull 
-        hardSTP                     = self.data.close[0]    <= self.buyprice - (self.buyprice *  149/1000) and not self.isbull
+        hardSTP                     = self.data.close[0]    <= self.buyprice - (self.buyprice *  self.hardSTPDefault/1000) and not self.isbull
         
-
+        if(TimeProfitRatioSTP):
+            self.orderer(False)
+            log("Time/Profit SELL")
         
         if(hardSTP and adxtrigger):
             self.orderer(False)
             log("HARD_STP SELL")
         
-        if(TimeProfitRatioSTP):
-            self.orderer(False)
-            log("Time/Profit SELL")
+
 
 
 
@@ -346,7 +343,7 @@ def main():
     
     # Include Strategy
     
-    args = [2,271,2,910,160,56,213,254,1617,19,530,347,101,175,340,1169,569,280,149,-1,-1]
+    args = [2,271,2,910,160,56,259,254,1617,19,525,348,101,175,340,1161,572,280,160,-1,-1]
 
     cerebro.addstrategy(MyStratLive,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9]
                                 ,p10=args[10],p11=args[11],p12=args[12],p13=args[13],p14=args[14],p15=args[15],p16=args[16],p17=args[17],p18=args[18],p19=args[20],p20=args[20])
