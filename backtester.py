@@ -1,11 +1,15 @@
+import datetime
+import time
 from math import sqrt
 from operator import itemgetter
 from statistics import stdev
-from binance.client import Client
+
 import backtrader as bt
-import get_data as gd, backtrader as bt, datetime
-import time
+from binance.client import Client
+
+import get_data as gd
 from config import COIN_REFER, COIN_TARGET
+
 
 class AverageRage(bt.Indicator):
     params = (

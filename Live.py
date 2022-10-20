@@ -1,7 +1,13 @@
-from gtts import gTTS
+import datetime
+import os
+import time
+
+import backtrader as bt
+import playsound
 from ccxtbt import CCXTStore
-from config import BINANCE, COIN_TARGET, COIN_REFER, DEBUG
-import os, playsound, time, backtrader as bt, datetime
+from gtts import gTTS
+
+from config import BINANCE, COIN_REFER, COIN_TARGET, DEBUG
 
 ### Text To Speach Stuff ###
 Buytext    = "Buy " + COIN_TARGET
@@ -208,7 +214,7 @@ class MyStratLive(bt.Strategy):
 
         for data in self.datas:
             log('{} - {} | Coin {} | Cash {} | O: {} H: {} L: {} C: {} V:{} TEMA:{}'.format(data.datetime.datetime()+datetime.timedelta(minutes=180+15),
-                data._name, coin, cash, data.open[0], data.high[0], data.low[0], data.close[0], data.volume[0], self.bull_diff_ema[0]))
+                data._name, coin, cash, data.open[0], data.high[0], data.low[0], data.close[0], data.volume[0], self.bear_diff_ema[0]))
             
 
         self.ordered                = False
