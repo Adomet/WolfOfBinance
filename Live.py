@@ -247,8 +247,8 @@ class MyStratLive(bt.Strategy):
                 self.orderer(False)
 
         else:
-            bear_rsiselltrigger     = self.bear_rsi        >=  self.bear_rsi_high 
             bear_rsibuytrigger      = self.bear_rsi        <=  self.bear_rsi_low
+            bear_rsiselltrigger     = self.bear_rsi        >=  self.bear_rsi_high 
             bear_avgdiffselltrigger = self.data.close[0]   >=  self.bear_diff_ema_heigh
             bear_avgdiffbuytrigger  = self.data.close[0]   <=  self.bear_diff_ema_low
             bear_isTakeProfit       = self.data.close[0]   >=  self.buyprice + (self.buyprice * self.bear_takeprofit) and not self.buyprice == -1
@@ -341,7 +341,7 @@ def main():
     
     # Include Strategy
     
-    args = [2,271,2,876,160,56,347,254,1617,19,525,348,101,175,340,1161,567,280,160,-1,-1]
+    args = [2,271,2,877,159,56,780,248,1617,19,468,347,99,179,354,1163,567,202,160,298,468]
 
     cerebro.addstrategy(MyStratLive,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9]
                                 ,p10=args[10],p11=args[11],p12=args[12],p13=args[13],p14=args[14],p15=args[15],p16=args[16],p17=args[17],p18=args[18],p19=args[19],p20=args[20])
