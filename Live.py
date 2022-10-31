@@ -128,10 +128,9 @@ class MyStratLive(bt.Strategy):
         self.plot                      =  False
         self.params.p0                 =  max(self.params.p0,1)
         self.supertrend                =  SuperTrend(self.data,period=self.params.p0,multiplier=max(self.params.p1/100,1),plot=True)
-        self.superisBull               =  bt.ind.CrossOver(self.data.close,self.supertrend,plot=False)
-        self.tdnine                    =  TD9(plot=self.plot)
+        self.tdnine                    =  TD9(plot=True)
         self.adx                       =  bt.ind.AverageDirectionalMovementIndex(self.data,period = 13,plot=self.plot)
-        self.atr                       =  bt.ind.AverageTrueRange(self.data,period=9,plot=self.plot)
+        self.atr                       =  bt.ind.AverageTrueRange(self.data,period=self.params.p19,plot=self.plot)
 
         self.isbull                    =  False
         #BULL
@@ -220,20 +219,13 @@ class MyStratLive(bt.Strategy):
         self.ordered                = False
         adxtrigger                  = self.adx             >=  26
         td9selltrigger              = self.tdnine          >=  10
-        candleDiffbuytrigger        = 58/1000 >=  1 - (self.data.close[0]/self.data.open[0])
-        isStop                      = self.data.close[0]   <=  self.buyprice - (self.buyprice * self.stop_loss) - (self.atr * 81 / 1000 ) 
+        candleDiffbuytrigger        = 358 / 10000 >=  1 - (self.data.close[0]/self.data.open[0])
+        isStop                      = self.data.close[0]   <=  self.buyprice - (self.buyprice * self.stop_loss) - (self.atr * self.params.p20 / 10000 )
 
-
-        if(not self.superisBull[0] == 0):
-            self.isbull = (self.superisBull[0] == 1)
+        wasBull = self.isbull
+        self.isbull = (self.supertrend < self.data.close[0])
+        if(wasBull != self.isbull):
             log("Switched: "+(" Bull" if self.isbull else " Bear")+" at: "+str(self.data.close[0]))
-
-
-        #print("pos:"+str(self.position.size))
-        
-        #if(not self.live_data):
-        #    return
-
 
         if(self.isbull):
             bull_rsibuytrigger      = self.bull_rsi        <=  self.bull_rsi_low
