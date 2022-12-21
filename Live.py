@@ -221,6 +221,7 @@ class MyStratLive(bt.Strategy):
         td9selltrigger              = self.tdnine          >=  10
         candleDiffbuytrigger        = 358 / 10000 >=  1 - (self.data.close[0]/self.data.open[0])
         isStop                      = self.data.close[0]   <=  self.buyprice - (self.buyprice * self.stop_loss) - (self.atr * self.params.p20 / 10000 )
+        isProfit                    = self.data.close[0]   >  self.buyprice
 
         wasBull = self.isbull
         self.isbull = (self.supertrend < self.data.close[0])
@@ -236,7 +237,7 @@ class MyStratLive(bt.Strategy):
 
             if(bull_rsibuytrigger  and bull_avgdiffbuytrigger ):
                 self.isbuyready = True
-            elif(bull_rsiselltrigger and bull_avgdiffselltrigger and td9selltrigger):
+            elif(bull_rsiselltrigger and bull_avgdiffselltrigger and td9selltrigger and isProfit):
                 log("Bull_IND SELL")
                 self.orderer(False)
             elif(bull_isTakeProfit):
@@ -255,7 +256,7 @@ class MyStratLive(bt.Strategy):
 
             if(bear_rsibuytrigger    and bear_avgdiffbuytrigger ):
                 self.isbuyready = True
-            elif(bear_rsiselltrigger and bear_avgdiffselltrigger):
+            elif(bear_rsiselltrigger and bear_avgdiffselltrigger and isProfit):
                 self.orderer(False)
                 log("Bear_IND SELL")
             elif(bear_isTakeProfit):
@@ -280,7 +281,7 @@ class MyStratLive(bt.Strategy):
         TimeProfitRatioSTP          = (self.data.close[0] - self.buyprice)/self.buyprice >= ((self.bull_takeprofit) - (self.timeProfitRetioDropRate * (self.posCandleCount))) and not self.isbull 
         hardSTP                     = self.data.close[0]    <= self.buyprice - (self.buyprice *  self.hardSTPDefault/1000) and not self.isbull
         
-        if(TimeProfitRatioSTP):
+        if(TimeProfitRatioSTP and isProfit):
             self.orderer(False)
             log("Time/Profit SELL")
         
