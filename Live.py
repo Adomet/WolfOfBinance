@@ -237,7 +237,7 @@ class MyStratLive(bt.Strategy):
 
             if(bull_rsibuytrigger  and bull_avgdiffbuytrigger ):
                 self.isbuyready = True
-            elif(bull_rsiselltrigger and bull_avgdiffselltrigger and td9selltrigger and isProfit):
+            elif(bull_rsiselltrigger and bull_avgdiffselltrigger and td9selltrigger):
                 log("Bull_IND SELL")
                 self.orderer(False)
             elif(bull_isTakeProfit):
