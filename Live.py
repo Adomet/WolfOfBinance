@@ -158,6 +158,7 @@ class MyStratLive(bt.Strategy):
         self.timeProfitRetioDropRate   =  self.params.p17 / 1000000
 
         self.hardSTPDefault            =  self.params.p18
+        self.bull_tp_per               =  16 / 1000
         self.buyprice                  =  -1
         self.ordered                   =  False
 
@@ -219,9 +220,10 @@ class MyStratLive(bt.Strategy):
         self.ordered                = False
         adxtrigger                  = self.adx             >=  26
         td9selltrigger              = self.tdnine          >=  10
-        candleDiffbuytrigger        = 358 / 10000 >=  1 - (self.data.close[0]/self.data.open[0])
         isStop                      = self.data.close[0]   <=  self.buyprice - (self.buyprice * self.stop_loss) - (self.atr * self.params.p20 / 10000 )
         isProfit                    = self.data.close[0]   >  self.buyprice
+        candleDiffbuytrigger        = 358 / 10000 >=  1 - (self.data.close[0]/self.data.open[0])
+        isSellPer                   = self.data.close[0]   > (self.buyprice + (self.buyprice * self.bull_tp_per))
 
         wasBull = self.isbull
         self.isbull = (self.supertrend < self.data.close[0])
@@ -237,7 +239,7 @@ class MyStratLive(bt.Strategy):
 
             if(bull_rsibuytrigger  and bull_avgdiffbuytrigger ):
                 self.isbuyready = True
-            elif(bull_rsiselltrigger and bull_avgdiffselltrigger and td9selltrigger):
+            elif(bull_rsiselltrigger and bull_avgdiffselltrigger and td9selltrigger and isSellPer):
                 log("Bull_IND SELL")
                 self.orderer(False)
             elif(bull_isTakeProfit):
@@ -256,7 +258,7 @@ class MyStratLive(bt.Strategy):
 
             if(bear_rsibuytrigger    and bear_avgdiffbuytrigger ):
                 self.isbuyready = True
-            elif(bear_rsiselltrigger and bear_avgdiffselltrigger and isProfit):
+            elif(bear_rsiselltrigger and bear_avgdiffselltrigger and isSellPer):
                 self.orderer(False)
                 log("Bear_IND SELL")
             elif(bear_isTakeProfit):
