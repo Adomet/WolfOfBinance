@@ -120,6 +120,22 @@ class SuperTrend(bt.Indicator):
             else:
                 self.l.super_trend[0] = self.stb.final_ub[0]
 
+class AverageRage(bt.Indicator):
+    params = (
+        ('period', 14),
+    )
+
+    lines = ('averageRange',)
+    plotinfo = dict(
+        plot=True,
+        plotname='averageRange',
+        subplot=True,
+        plotlinelabels=True)
+
+    def __init__(self):
+        self.addminperiod(self.p.period)
+        self.ranger = 100 * (self.data.high - self.data.low) / self.data.open
+        self.lines.averageRange = bt.ind.SMA(self.ranger,period=self.p.period)
 
 ### Trade Strategy ###
 class MyStratLive(bt.Strategy):
@@ -130,7 +146,7 @@ class MyStratLive(bt.Strategy):
         self.supertrend                =  SuperTrend(self.data,period=self.params.p0,multiplier=max(self.params.p1/100,1),plot=True)
         self.tdnine                    =  TD9(plot=True)
         self.adx                       =  bt.ind.AverageDirectionalMovementIndex(self.data,period = 13,plot=self.plot)
-        self.atr                       =  bt.ind.AverageTrueRange(self.data,period=self.params.p19,plot=self.plot)
+        self.ar                        =  AverageRage(self.data,period=self.params.p18,plot=self.plot)
 
         self.isbull                    =  False
         #BULL
@@ -151,13 +167,13 @@ class MyStratLive(bt.Strategy):
         self.bear_rsi_low              =  self.params.p11 / 10
         self.params.p12                =  max(self.params.p12,1)
         self.bear_diff_ema             =  bt.ind.TripleExponentialMovingAverage(period=self.params.p12,plot=self.plot)
-        self.bear_diff_ema_heigh       =  self.bear_diff_ema + (self.bear_diff_ema / self.params.p13 * 10) 
-        self.bear_diff_ema_low         =  self.bear_diff_ema - (self.bear_diff_ema / self.params.p14 * 10)
+        self.bear_diff_ema_heigh       =  self.bear_diff_ema + ((self.bear_diff_ema / self.params.p13) * self.ar * 37/10) 
+        self.bear_diff_ema_low         =  self.bear_diff_ema - ((self.bear_diff_ema / self.params.p14) * 10)
         self.bear_takeprofit           =  self.params.p15 / 10000 
         self.stop_loss                 =  self.params.p16 / 10000
         self.timeProfitRetioDropRate   =  self.params.p17 / 1000000
 
-        self.hardSTPDefault            =  self.params.p18
+        self.hardSTPDefault            =  160 / 1000
         self.bull_tp_per               =  16 / 1000
         self.buyprice                  =  -1
         self.ordered                   =  False
@@ -220,9 +236,9 @@ class MyStratLive(bt.Strategy):
         self.ordered                = False
         adxtrigger                  = self.adx             >=  26
         td9selltrigger              = self.tdnine          >=  10
-        isStop                      = self.data.close[0]   <=  self.buyprice - (self.buyprice * self.stop_loss) - (self.atr * self.params.p20 / 10000 )
+        isStop                      = self.data.close[0]   <=  self.buyprice - (self.buyprice * self.stop_loss) #- (self.atr * self.params.p20 / 10000 )
         isProfit                    = self.data.close[0]   >  self.buyprice
-        candleDiffbuytrigger        = 358 / 10000 >=  1 - (self.data.close[0]/self.data.open[0])
+        candleDiffbuytrigger        = 358 / 10000          >=  1 - (self.data.close[0]/self.data.open[0])
         isSellPer                   = self.data.close[0]   > (self.buyprice + (self.buyprice * self.bull_tp_per))
 
         wasBull = self.isbull
@@ -281,7 +297,7 @@ class MyStratLive(bt.Strategy):
 
         ### NEW STUFF ###
         TimeProfitRatioSTP          = (self.data.close[0] - self.buyprice)/self.buyprice >= ((self.bull_takeprofit) - (self.timeProfitRetioDropRate * (self.posCandleCount))) and not self.isbull 
-        hardSTP                     = self.data.close[0]    <= self.buyprice - (self.buyprice *  self.hardSTPDefault/1000) and not self.isbull
+        hardSTP                     = self.data.close[0]    <= self.buyprice - (self.buyprice *  self.hardSTPDefault) and not self.isbull
         
         if(TimeProfitRatioSTP and isProfit):
             self.orderer(False)
