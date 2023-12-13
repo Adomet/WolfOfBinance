@@ -200,13 +200,13 @@ class MyStratLive(bt.Strategy):
         self.ordered =True    
         if(isbuy):
             cash,value = self.broker.get_wallet_balance(COIN_REFER)
-            size = int(cash-1) / self.data.close[0]
+            size = int(cash-(cash/990)) / self.data.close[0]
             log("Buy state")
             if(self.live_data and cash > 11.0):
                 self.order=self.buy(size=size)
                 self.buyprice = self.data.close[0]
                 speak(Buytext)
-                log("Buyed price at:"+str(self.data.close[0])+" || Stoploss price at:"+ str(self.buyprice - (self.buyprice * self.stop_loss)) + " || TP_Sell price at:"+ str(self.buyprice + (self.buyprice * self.bull_takeprofit)))
+                log("Buyed:"+str(self.data.close[0])+"| Stop:"+ str(self.buyprice - (self.buyprice * self.stop_loss)) + "| TP:"+ str(self.buyprice + (self.buyprice * self.bull_takeprofit)))
         else:
             coin,val = self.broker.get_wallet_balance(COIN_TARGET)
             self.buyprice = -1
@@ -229,8 +229,7 @@ class MyStratLive(bt.Strategy):
             coin = 'NA'
 
         for data in self.datas:
-            log('{} - {} | Coin {} | Cash {} | O: {} H: {} L: {} C: {} V:{} TEMA:{}'.format(data.datetime.datetime()+datetime.timedelta(minutes=180+15),
-                data._name, coin, cash, data.open[0], data.high[0], data.low[0], data.close[0], data.volume[0], self.bear_diff_ema[0]))
+            log('{} - {} | Coin {} | Cash {} | C: {}'.format(data.datetime.datetime()+datetime.timedelta(minutes=180+15), data._name, coin, cash, data.close[0]))
             
 
         self.ordered                = False
@@ -288,7 +287,7 @@ class MyStratLive(bt.Strategy):
         if(candleDiffbuytrigger and self.isbuyready):
             self.isbuyready=False
             self.orderer(True)
-            log("CANDLE_TRIG BUY")     
+            log("BUYED")     
 
         if(not self.buyprice == -1):
             self.posCandleCount+=1
@@ -360,7 +359,7 @@ def main():
     
     # Include Strategy
     
-    args = [3,264,2,874,130,69,206,366,1568,19,503,349,110,169,344,869,573,266,83,-1,-1]
+    args = [3,264,2,794,130,69,206,366,1568,19,503,349,110,169,344,869,573,266,83,-1,-1]
 
     cerebro.addstrategy(MyStratLive,p0=args[0],p1=args[1],p2=args[2],p3=args[3],p4=args[4],p5=args[5],p6=args[6],p7=args[7],p8=args[8],p9=args[9]
                                 ,p10=args[10],p11=args[11],p12=args[12],p13=args[13],p14=args[14],p15=args[15],p16=args[16],p17=args[17],p18=args[18],p19=args[19],p20=args[20])
@@ -384,7 +383,8 @@ def wob():
         timer = (datetime.datetime.utcnow() + datetime.timedelta(minutes=180)).strftime("%d-%m-%y %H:%M")
         log("finished : "+ str(timer))
     except Exception as err:
-        log("Finished with error: "+str(err))
+        log("Error: "+str(err))
+        wob()
         raise
 
 if __name__ == "__main__":
