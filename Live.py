@@ -29,38 +29,18 @@ def speak(text):
     os.remove(filename)
 
 
-class TD9(bt.Indicator):
-    lines = ('tdnine',)
-    plotinfo = dict(
-        plot=True,
-        plotname='tdnine',
-        subplot=True,
-        plotlinelabels=True)
-
-
+class EWO(bt.Indicator):
+    """Elliott Wave Oscillator"""
+    lines = ('ewo',)
+    params = (('fper', 50), ('sper', 200))
+    plotinfo = dict(subplot=True, plotname='EWO')
+    
     def __init__(self):
-        self.addminperiod(5)
-        self.prvcandleclose =-1
-        self.tdnine = 0
-
-    def next(self):
-        if(self.data.high[-4] < self.data.close):
-            self.prvcandleclose  = self.data.close
-            self.tdnine          = self.tdnine +1
-        
-        elif(self.tdnine > 0):
-            self.tdnine =0
-        
-        if(self.data.low[-4] > self.data.close):
-            self.prvcandleclose  = self.data.close
-            self.tdnine          = self.tdnine -1
-        
-        elif(self.tdnine < 0):
-            self.tdnine =0
+        self.fast_ema = bt.ind.EMA(period=self.params.fper)
+        self.slow_ema = bt.ind.EMA(period=self.params.sper)
+        self.lines.ewo = (self.fast_ema - self.slow_ema) / self.data.close * 100 
 
 
-        self.prvcandleclose = self.data.close
-        self.lines.tdnine[0]     = self.tdnine
 
 class SuperTrendBand(bt.Indicator):
     """
@@ -143,7 +123,6 @@ class MyStratLive(bt.Strategy):
     def __init__(self):
         self.plot                      =  True
         self.supertrend                =  SuperTrend(self.data,period=3,multiplier=max(self.params.p0/100,1),plot=True)
-        self.tdnine                    =  TD9(plot=True)
         self.ar                        =  AverageRage(self.data,period=130,plot=self.plot)
         self.ewo                       =  EWO(self.data,fper = self.params.p19,sper = self.params.p20,plot=self.plot)
 
