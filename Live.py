@@ -198,8 +198,6 @@ class MyStratLive(bt.Strategy):
 
 
     def next(self):
-        
-        
         if self.live_data:
             cash,value = self.broker.get_wallet_balance(COIN_REFER)
             coin,val = self.broker.get_wallet_balance(COIN_TARGET)
@@ -212,7 +210,7 @@ class MyStratLive(bt.Strategy):
             log('{} - {} | Coin {} | Cash {} | C: {}'.format(data.datetime.datetime()+datetime.timedelta(minutes=180+15), data._name, coin, cash, data.close[0]))
             
 
-    def next(self):
+
         self.ordered                = False
         isStop                      = self.data.close[0]   <=  self.buyprice - (self.buyprice * self.stop_loss * self.ar[0])
 
