@@ -1,16 +1,16 @@
 import datetime
 import backtrader as bt
-from indicators import AverageRage, AverageDiff, ATD, TD9, SuperTrendBand, SuperTrend, EWO
+from indicators import AverageRage, AverageDiff, ATD, TD9, SuperTrendBand, SuperTrend, EWO, RelativeRange
 
 ### Trade Strategy ###
-class MyStratV4(bt.Strategy):
-    params=(('p0',0),('p1',0),('p2',0),('p3',0),('p4',0),('p5',0),('p6',0),('p7',0),('p8',0),('p9',0),('p10',0),('p11',0),('p12',0),('p13',0),('p14',0),('p15',0),('p16',0),('p17',0),('p18',0),('p19',0),('p20',0),('p21',0))
+class MyStratV5(bt.Strategy):
+    params=(('p0',0),('p1',0),('p2',0),('p3',0),('p4',0),('p5',0),('p6',0),('p7',0),('p8',0),('p9',0),('p10',0),('p11',0),('p12',0),('p13',0),('p14',0),('p15',0),('p16',0),('p17',0),('p18',0),('p19',0),('p20',0),('p21',0),('p22',0))
     def __init__(self):
         self.plot                      =  True
         self.supertrend                =  SuperTrend(self.data,period=3,multiplier=max(self.params.p0/100,1),plot=True)
-        self.tdnine                    =  TD9(plot=True)
         self.ar                        =  AverageRage(self.data,period=130,plot=self.plot)
         self.ewo                       =  EWO(self.data,fper = self.params.p19,sper = self.params.p20,plot=self.plot)
+        #self.rr                        =  RelativeRange(self.data,smoothing_length=self.params.p21,range_length=self.params.p22,plot=self.plot)
 
         self.isbull                    =  False
         #BULL

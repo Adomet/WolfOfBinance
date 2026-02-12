@@ -121,6 +121,20 @@ class SuperTrend(bt.Indicator):
             self.l.super_trend[0] = self.stb.final_lb[0] if self.data.close[0] >= self.stb.final_lb[0] else self.stb.final_ub[0]
 
 
+class RelativeRange(bt.Indicator):
+    """Relative Range (RR) - (Close - Open) normalized by avg |close-open|"""
+    params = (('smoothing_length', 14), ('range_length', 14))
+    lines = ('relativeRange',)
+    plotinfo = dict(plot=True, plotname='Relative Range', subplot=True, plotlinelabels=True)
+
+    def __init__(self):
+        self.addminperiod(max(self.p.smoothing_length, self.p.range_length))
+        rangr = abs(self.data.close - self.data.open)
+        avg_range = bt.ind.SMA(rangr, period=self.p.range_length)
+        rr_raw = 100 * (self.data.close - self.data.open) / avg_range
+        self.lines.relativeRange = bt.ind.SMA(rr_raw, period=self.p.smoothing_length)
+
+
 class EWO(bt.Indicator):
     """Elliott Wave Oscillator"""
     lines = ('ewo',)
